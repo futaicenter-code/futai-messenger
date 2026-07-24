@@ -1,0 +1,2005 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FUTAI MESSENGER — ระบบวิ่งแมส</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2430;
+    --ink-soft:#2B3648;
+    --paper:#F7F5F0;
+    --card:#FFFFFF;
+    --amber:#F2A93B;
+    --amber-deep:#C97F14;
+    --teal:#1E9E71;
+    --teal-soft:#E4F5EC;
+    --red:#E2574C;
+    --red-soft:#FBE7E5;
+    --slate:#6B7280;
+    --line:#E4E0D6;
+    --amber-soft:#FCEED2;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Sarabun',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.disp{font-family:'Sarabun',sans-serif; font-weight:700; letter-spacing:0;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  header.app{
+    background:var(--ink);
+    color:var(--paper);
+    padding:18px 20px 0 20px;
+    position:sticky; top:0; z-index:20;
+  }
+  .app-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand .tag{
+    width:34px;height:34px;border-radius:8px;background:var(--amber);
+    display:flex;align-items:center;justify-content:center;color:var(--ink);
+    font-family:'Sarabun',sans-serif; font-weight:700; font-size:16px;
+  }
+  .brand h1{font-size:18px;margin:0;color:#fff;}
+  .brand .sub{font-size:11px;color:#9AA5B5;letter-spacing:0.08em;margin-top:1px;}
+  .cfg-btn{
+    background:none;border:1px solid #47536A;color:#B9C2D0;border-radius:6px;
+    padding:6px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun';
+  }
+  .cfg-btn:hover{border-color:var(--amber);color:var(--amber);}
+
+  nav.tabs{display:flex;gap:4px;}
+  nav.tabs button{
+    flex:1;background:none;border:none;color:#9AA5B5;padding:12px 6px 14px 6px;
+    font-family:'Sarabun',sans-serif;font-size:13px;letter-spacing:0.05em;text-transform:uppercase;
+    cursor:pointer;border-bottom:3px solid transparent;
+  }
+  nav.tabs button.active{color:#fff;border-bottom-color:var(--amber);}
+
+  .cfgPanel{
+    background:#232F42;color:#D7DEE8;padding:14px 20px;font-size:12px;
+    display:none;
+  }
+  .cfgPanel.open{display:block;}
+  .cfgPanel label{display:block;margin-bottom:6px;color:#9AA5B5;}
+  .cfgPanel input{
+    width:100%;max-width:520px;padding:8px 10px;border-radius:6px;border:1px solid #47536A;
+    background:#1B2430;color:#fff;font-family:'IBM Plex Mono';font-size:12px;
+  }
+  .cfgPanel .status{margin-top:8px;font-size:11px;}
+  .cfgPanel .status.ok{color:var(--teal);}
+  .cfgPanel .status.off{color:#9AA5B5;}
+
+  main{max-width:960px;margin:0 auto;padding:20px 16px 80px 16px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  select, .btn, .input{
+    font-family:'Sarabun';font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);
+  }
+  .btn{cursor:pointer;font-weight:600;border:1px solid var(--ink);}
+  .btn:hover{background:var(--ink);color:#fff;}
+  .btn.primary{background:var(--amber);border-color:var(--amber-deep);color:var(--ink);}
+  .btn.primary:hover{background:var(--amber-deep);color:#fff;}
+  .btn.ghost{border-color:var(--line);color:var(--slate);}
+  .btn.ghost:hover{background:var(--ink-soft);color:#fff;}
+  .btn.small{padding:6px 10px;font-size:12px;border-radius:6px;}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn:disabled:hover{background:#fff;color:var(--ink);}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap;}
+
+  .summaryStrip{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+  .kpi{
+    background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;
+  }
+  .kpi .num{font-family:'Sarabun';font-size:26px;font-weight:600;line-height:1;}
+  .kpi .lbl{font-size:11px;color:var(--slate);margin-top:4px;letter-spacing:0.03em;}
+
+  .stopList{display:flex;flex-direction:column;gap:10px;}
+  .bulkBar{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;padding:10px 14px;
+  }
+  .stopCard{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    display:flex;justify-content:space-between;gap:12px;align-items:flex-start;
+    position:relative;overflow:hidden;
+  }
+  .stopCard[draggable="true"]{cursor:grab;}
+  .stopCard.drag-over{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber-soft);}
+  .dragHandle{
+    color:var(--slate);font-size:18px;line-height:1;padding-top:2px;cursor:grab;user-select:none;
+  }
+  .stopCard::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--amber);
+  }
+  .stopCard.done::before{background:var(--teal);}
+  .stopCard .idx{
+    font-family:'IBM Plex Mono';font-size:11px;color:var(--slate);margin-bottom:4px;
+  }
+  .stopCard .name{font-weight:700;font-size:15px;}
+  .stopCard .addr{font-size:12.5px;color:var(--slate);margin-top:2px;}
+  .stopCard .meta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .badge{
+    font-size:11px;padding:3px 8px;border-radius:20px;font-weight:600;
+    background:var(--amber-soft);color:var(--amber-deep);
+  }
+  .badge.type{background:#EEF0F4;color:var(--ink-soft);}
+  .badge.done{background:var(--teal-soft);color:var(--teal);}
+  .badge.bill{background:#EEF0F4;color:var(--ink-soft);font-family:'IBM Plex Mono';}
+  .stopCard .actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:96px;}
+  .stopCard .checkinfo{font-size:11px;color:var(--teal);margin-top:6px;font-family:'IBM Plex Mono';}
+  .checkinThumb{
+    width:56px;height:56px;border-radius:8px;object-fit:cover;margin-top:8px;cursor:pointer;
+    border:1px solid var(--line);display:block;
+  }
+  .emptyState{
+    text-align:center;padding:50px 20px;color:var(--slate);border:1px dashed var(--line);border-radius:12px;
+  }
+  .emptyState .disp{font-size:16px;color:var(--ink);margin-bottom:6px;}
+
+  .modalOverlay{
+    position:fixed;inset:0;background:rgba(27,36,48,0.55);display:none;align-items:center;justify-content:center;
+    z-index:50;padding:16px;
+  }
+  .modalOverlay.open{display:flex;}
+  .modal{
+    background:#fff;border-radius:14px;max-width:420px;width:100%;padding:20px;max-height:90vh;overflow-y:auto;
+  }
+  .modal h3{margin:0 0 14px 0;font-size:16px;}
+  .field{margin-bottom:12px;position:relative;}
+  .suggestBox{
+    position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--line);
+    border-radius:8px;margin-top:4px;box-shadow:0 6px 16px rgba(27,36,48,0.12);z-index:5;
+    max-height:180px;overflow-y:auto;display:none;
+  }
+  .suggestBox.open{display:block;}
+  .suggestBox .opt{padding:9px 12px;font-size:13px;cursor:pointer;}
+  .suggestBox .opt:hover{background:var(--paper);}
+  .suggestBox .opt .sub{font-size:11px;color:var(--slate);}
+  .fieldHint{font-size:11px;color:var(--slate);margin-top:6px;}
+  /* Google's Places Autocomplete injects its own .pac-container / .pac-item elements straight
+     into <body>. The page's global box-sizing reset and lack of matching rules make that dropdown
+     render squashed (all suggestions collapse into a single row, icons show as broken placeholders).
+     Force sane layout for it here regardless of where in the DOM it lands. */
+  .pac-container{
+    box-sizing: content-box !important;
+    z-index: 100000 !important;
+    font-family: 'Sarabun', sans-serif !important;
+    border: 1px solid #E4E0D6 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 6px 16px rgba(27,36,48,0.18) !important;
+    margin-top: 4px !important;
+  }
+  .pac-item{
+    box-sizing: content-box !important;
+    display: block !important;
+    width: auto !important;
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    cursor: pointer !important;
+    border-top: 1px solid #E4E0D6 !important;
+  }
+  .pac-item:first-child{ border-top: none !important; }
+  .pac-item-query, .pac-matched{ font-size: 13px !important; }
+  .pac-icon{ display: none !important; }
+  .addrChip{
+    padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:#fff;
+    font-size:12px;cursor:pointer;color:var(--ink-soft);
+  }
+  .addrChip.selected{background:var(--teal-soft);border-color:var(--teal);color:var(--teal);}
+  .addrChip.newAddr{border-style:dashed;color:var(--slate);}
+  .qtyRow{
+    display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);
+  }
+  .qtyRow:last-child{border-bottom:none;}
+  .qtyRow .qtyName{font-size:13px;}
+  .qtyRow input[type=number]{
+    width:56px;padding:5px 6px;border-radius:6px;border:1px solid var(--line);text-align:center;font-family:'Sarabun';
+  }
+  .field > label{
+    display:block;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;
+    padding-left:9px;border-left:3px solid var(--amber);letter-spacing:0.01em;
+  }
+  .field input, .field select{width:100%;}
+  .modalActions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+
+  .chipGroup{display:flex;flex-wrap:wrap;gap:8px;}
+  .chipGroupGrid{
+    display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;
+  }
+  .chipGroupGrid .chip span{
+    display:flex;align-items:center;justify-content:center;text-align:center;height:100%;
+    padding:7px 6px;font-size:12px;
+  }
+  @media (max-width:520px){
+    .chipGroupGrid{grid-template-columns:repeat(3, 1fr);}
+  }
+  .chip{
+    position:relative;
+  }
+  .chip input{position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;margin:0;cursor:pointer;}
+  .chip span{
+    display:inline-block;padding:7px 12px;border-radius:20px;border:1px solid var(--line);
+    font-size:13px;color:var(--slate);background:#fff;cursor:pointer;user-select:none;
+  }
+  .chip input:checked + span{
+    background:var(--ink);border-color:var(--ink);color:#fff;
+  }
+  .segGroup{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .segGroup label{flex:1;text-align:center;padding:9px 10px;font-size:13px;cursor:pointer;color:var(--slate);position:relative;}
+  .segGroup input{position:absolute;opacity:0;}
+  .segGroup label.active{background:var(--ink);color:#fff;}
+
+  .badge.category-customer{background:#E5EEFB;color:#2660C9;}
+  .badge.category-supplier{background:#F2E8FB;color:#7A2FBF;}
+  .badge.issue-high{background:#FBE1DE;color:var(--red);}
+  .badge.issue-med{background:var(--amber-soft);color:var(--amber-deep);}
+  .badge.issue-low{background:#EEF0F4;color:var(--ink-soft);}
+  .badge.issue-recur{background:#FDEDED;color:var(--red);border:1px solid #F6C9C5;}
+
+  .photoBox{
+    border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;cursor:pointer;
+    color:var(--slate);font-size:12px;
+  }
+  .photoBox img{max-width:100%;border-radius:8px;display:block;margin:0 auto 8px auto;}
+  .geoLine{font-size:11.5px;color:var(--slate);margin-top:8px;font-family:'IBM Plex Mono';}
+  .geoLine.ok{color:var(--teal);}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;font-size:13px;}
+  thead th{
+    background:var(--ink);color:#D7DEE8;font-family:'Sarabun';font-size:11px;text-transform:uppercase;
+    letter-spacing:0.04em;padding:10px 12px;text-align:left;font-weight:600;
+  }
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--line);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#FBFAF7;}
+  .statusPill{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;}
+  .statusPill.wait{background:var(--red-soft);color:var(--red);}
+  .statusPill.back{background:var(--teal-soft);color:var(--teal);}
+
+  .section{margin-bottom:26px;}
+  .section h2{font-size:15px;margin:0 0 12px 0;color:var(--ink-soft);}
+
+  .barChart{display:flex;flex-direction:column;gap:10px;}
+  .barRow{display:grid;grid-template-columns:70px 1fr 46px;align-items:center;gap:10px;font-size:12.5px;}
+  .barTrack{background:#EEEBE2;border-radius:6px;height:16px;overflow:hidden;}
+  .barFill{height:100%;background:linear-gradient(90deg,var(--amber),var(--amber-deep));border-radius:6px;}
+  .barRow .val{font-family:'IBM Plex Mono';color:var(--slate);}
+
+  .filterBar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+
+  footer.note{max-width:960px;margin:0 auto;padding:0 16px 40px 16px;font-size:11.5px;color:var(--slate);}
+  footer.note b{color:var(--ink-soft);}
+
+  @media (max-width:560px){
+    .stopCard{flex-direction:column;}
+    .stopCard .actions{flex-direction:row;width:100%;justify-content:flex-end;}
+  }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="app-top">
+    <div class="brand">
+      <div class="tag">FM</div>
+      <div>
+        <h1>FUTAI MESSENGER</h1>
+        <div class="sub">วางแผนเส้นทาง · เช็คอิน · สรุปงานแมส</div>
+      </div>
+    </div>
+    <button class="cfg-btn" onclick="toggleCfg()">⚙ ตั้งค่า Google Sheet</button>
+  </div>
+  <nav class="tabs">
+    <button class="active" data-tab="messenger" onclick="switchTab('messenger')">เมสเซนเจอร์</button>
+    <button data-tab="sales" onclick="switchTab('sales')">เซลส์</button>
+    <button data-tab="accounting" onclick="switchTab('accounting')">บัญชี</button>
+    <button data-tab="admin" onclick="switchTab('admin')">ผู้บริหาร</button>
+  </nav>
+  <div class="cfgPanel" id="cfgPanel">
+    <label>Google Apps Script Web App URL (สำหรับซิงก์ข้อมูลเข้า Google Sheets แบบเรียลไทม์)</label>
+    <input id="sheetUrl" type="text" placeholder="https://script.google.com/macros/s/xxxxx/exec" oninput="onSheetUrlChange()">
+    <div class="status off" id="sheetStatus">ยังไม่ได้เชื่อมต่อ — ข้อมูลจะถูกเก็บในหน่วยความจำของเซสชันนี้เท่านั้น</div>
+    <div class="row" style="margin-top:8px;">
+      <button class="cfg-btn" onclick="manualRefreshStops()">🔄 ดึงงานล่าสุดจากชีต</button>
+      <button class="cfg-btn" onclick="manualRefreshCustomers()">🔄 ดึงรายชื่อลูกค้าล่าสุดจากชีต</button>
+    </div>
+    <div class="status off" id="customerSyncStatus" style="margin-top:4px;"></div>
+    <label style="margin-top:14px;">Google Maps API Key (ไม่บังคับ — ใส่เพื่อให้ค้นหา/เติมที่อยู่อัตโนมัติจาก Google Maps จริง)</label>
+    <input id="gmapsKey" type="text" placeholder="AIzaSy...." oninput="onGmapsKeyChange()">
+    <div class="status off" id="gmapsStatus">ยังไม่ได้ใส่ — ช่องที่อยู่จะเป็นการพิมพ์เองหรือเลือกจากรายชื่อที่เคยบันทึกไว้</div>
+  </div>
+</header>
+
+<main>
+
+  <div id="insecureBanner" style="display:none;background:var(--red-soft);border:1px solid #F0B8B3;color:var(--red);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.6;">
+    <b>⚠ ตำแหน่ง GPS จะไม่ทำงาน</b> — <span id="insecureReasonText"></span>
+    ต้องอัปโหลดไฟล์นี้ (ไฟล์ .html ที่ดาวน์โหลดมา ไม่ใช่ลิงก์ตัวอย่างจากแชท) ขึ้นเว็บโฮสติ้งที่เป็น HTTPS ก่อน
+    เช่น ลาก-วางไฟล์ที่ <b>app.netlify.com/drop</b> (ฟรี ไม่ต้องสมัคร ได้ลิงก์ HTTPS ทันที) แล้วเปิด<b>ลิงก์ของโฮสติ้งนั้นโดยตรง</b>ใน Safari
+    ส่วนรูปถ่ายและปุ่มอื่น ๆ ยังใช้งานได้ปกติ
+  </div>
+
+  <!-- MESSENGER TAB -->
+  <div id="tab-messenger">
+    <div class="section">
+      <h2>รายชื่อเมสเซนเจอร์</h2>
+      <div class="row" style="margin-bottom:14px;">
+        <input class="input" id="msgNewName" placeholder="พิมพ์ชื่อเมสเซนเจอร์คนใหม่" style="min-width:180px;">
+        <button class="btn ghost" onclick="addMessengerName()">+ เพิ่มชื่อเมส</button>
+        <button class="btn ghost" style="color:var(--red);border-color:var(--red);" onclick="removeMessengerName()">🗑 ลบชื่อที่เลือกอยู่</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="row">
+        <select id="msgSelect" onchange="renderMessenger()"></select>
+        <input class="input" type="date" id="msgDate" onchange="renderMessenger()">
+      </div>
+      <div class="row">
+        <button class="btn ghost" onclick="openRouteAll()">🧭 ดูเส้นทางรวมวันนี้</button>
+        <button class="btn primary" onclick="openAddStop()">+ เพิ่มจุดงาน</button>
+      </div>
+    </div>
+
+    <div class="summaryStrip" id="msgSummary"></div>
+
+    <div class="stopList" id="stopList"></div>
+  </div>
+
+  <!-- SALES TAB -->
+  <div id="tab-sales" style="display:none;">
+    <div class="section">
+      <h2>รายชื่อเซลส์</h2>
+      <div class="row" style="margin-bottom:10px;">
+        <select id="salesSelect" onchange="renderSales()"></select>
+        <input class="input" id="salesNewName" placeholder="พิมพ์ชื่อเซลส์คนใหม่" style="min-width:180px;">
+        <button class="btn ghost" onclick="addSalesName()">+ เพิ่มชื่อเซลส์</button>
+        <button class="btn ghost" style="color:var(--red);border-color:var(--red);" onclick="removeSalesName()">🗑 ลบชื่อที่เลือก</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="row">
+        <input class="input" type="date" id="salesDateFilter" onchange="renderSales()" title="กรองตารางด้านล่างตามวันที่ต้องการให้ส่ง">
+        <button class="btn ghost" onclick="clearSalesDateFilter()">ล้างตัวกรองวันที่ (ทุกวันที่)</button>
+      </div>
+      <div class="row">
+        <button class="btn primary" onclick="openAddStop()">+ แจ้งงานใหม่</button>
+      </div>
+    </div>
+
+    <div class="summaryStrip" id="salesSummary"></div>
+
+    <div class="section">
+      <h2 id="salesListHeading">งานที่แจ้งไว้ (ทุกวันที่)</h2>
+      <div class="filterBar">
+        <select id="salesStatusFilter" onchange="renderSales()">
+          <option value="all">ทุกสถานะ</option>
+          <option value="unassigned">ยังไม่มอบหมาย</option>
+          <option value="assigned">มอบหมายแล้ว</option>
+          <option value="done">เช็คอินแล้ว</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr><th>วันที่</th><th>ลูกค้า/ซัพพลายเออร์</th><th>ประเภทงาน</th><th>รถ</th><th>ช่วงเวลา</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th></tr></thead>
+        <tbody id="salesTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ACCOUNTING TAB -->
+  <div id="tab-accounting" style="display:none;">
+    <div class="section">
+      <div class="summaryStrip" id="acctSummary"></div>
+      <div class="filterBar">
+        <select id="acctPersonFilter" onchange="renderAccounting()"></select>
+        <select id="acctStatusFilter" onchange="renderAccounting()">
+          <option value="all">บิลทั้งหมด</option>
+          <option value="wait">รอบิลกลับ</option>
+          <option value="back">บิลกลับแล้ว</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr><th>วันที่</th><th>เมสเซนเจอร์</th><th>ลูกค้า / จุด</th><th>ประเภทงาน</th><th>เลขที่อ้างอิง</th><th>จำนวนบิล</th><th>บิลกลับแล้ว</th><th>สถานะ</th></tr></thead>
+        <tbody id="acctTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ADMIN TAB -->
+  <div id="tab-admin" style="display:none;">
+    <div class="filterBar">
+      <select id="admPerson" onchange="renderAdmin()"></select>
+      <select id="admMonth" onchange="renderAdmin()"></select>
+      <select id="admYear" onchange="renderAdmin()"></select>
+    </div>
+    <div class="summaryStrip" id="admSummary"></div>
+    <div class="section">
+      <h2>จำนวนงานต่อคน</h2>
+      <div class="barChart" id="admChart"></div>
+    </div>
+    <div class="section">
+      <h2>ตารางสรุปรายบุคคล</h2>
+      <table>
+        <thead><tr><th>ชื่อ</th><th>วันที่ทำงาน</th><th>จำนวนงาน</th><th>บิลที่ส่ง</th><th>บิลกลับแล้ว</th><th>% บิลกลับ</th><th>ปัญหาที่พบ</th></tr></thead>
+        <tbody id="admTable"></tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h2>สรุปปัญหาที่พบ</h2>
+      <div class="summaryStrip" id="admIssueSummary"></div>
+      <div class="barChart" id="admIssueChart" style="margin-bottom:16px;"></div>
+      <table>
+        <thead><tr><th>วันที่</th><th>เมสเซนเจอร์</th><th>ลูกค้า / จุด</th><th>ระดับ</th><th>เกิดซ้ำ</th><th>รายละเอียด</th></tr></thead>
+        <tbody id="admIssueTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer class="note">
+  <b>หมายเหตุ:</b> ปุ่ม "นำทาง" และ "ดูเส้นทางรวมวันนี้" เปิดลิงก์ Google Maps จริงโดยไม่ต้องใช้ API Key
+  (ใช้ระบบ deep-link ของ Google Maps). การเช็คอินใช้กล้องของอุปกรณ์และตำแหน่ง GPS จริงของเบราว์เซอร์.
+  ข้อมูลในหน้านี้เก็บอยู่ในหน่วยความจำของเซสชันนี้เท่านั้น — เชื่อมต่อ Google Sheet ผ่านปุ่ม "ตั้งค่า Google Sheet"
+  ด้านบนเพื่อบันทึกข้อมูลจริงแบบเรียลไทม์
+</footer>
+
+<!-- ADD STOP MODAL -->
+<div class="modalOverlay" id="addStopModal">
+  <div class="modal">
+    <h3>เพิ่มจุดงาน</h3>
+    <div class="field">
+      <label>เซลส์ผู้แจ้งงาน</label>
+      <select class="input" id="f_sales">
+        <option value="">- ไม่ระบุ -</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>วันที่ต้องการให้ไปส่ง/รับ</label>
+      <input class="input" type="date" id="f_deliveryDate" onchange="renderTruckBookingHint()">
+      <div class="fieldHint">ตั้งเป็นวันนี้ไว้ให้อัตโนมัติ — เปลี่ยนเป็นวันอื่นได้เลยถ้าอยากวางแผนล่วงหน้า (เช่น แจ้งวันนี้แต่ให้ไปส่งอีก 3-7 วันข้างหน้า) งานจะไปโผล่ในหน้าเมสเซนเจอร์ของวันที่เลือกไว้นี้เท่านั้น</div>
+    </div>
+    <div class="field" style="position:relative;">
+      <label>ชื่อลูกค้า / จุดหมาย</label>
+      <input class="input" id="f_name" placeholder="เช่น บริษัท เอบีซี จำกัด" autocomplete="off" oninput="onNameInput()" onfocus="onNameInput()">
+      <div id="nameSuggestions" class="suggestBox"></div>
+    </div>
+    <div class="field">
+      <label>ที่อยู่ (สำหรับนำทาง Google Maps)</label>
+      <input class="input" id="f_addr" placeholder="แม่นสุด: วางลิงก์จากปุ่ม แชร์ ใน Google Maps เช่น https://maps.app.goo.gl/... หรือพิมพ์ Plus Code / ที่อยู่เอง" autocomplete="off">
+      <div id="addrChips" class="chipGroup" style="margin-top:8px;"></div>
+      <div id="addrHint" class="fieldHint"></div>
+    </div>
+    <div class="field">
+      <label>ประเภทรายชื่อ</label>
+      <div class="segGroup" id="f_categoryGroup">
+        <label class="active" data-val="ลูกค้า" onclick="selectCategory(this)">
+          <input type="radio" name="f_category" value="ลูกค้า" checked><span>ลูกค้า</span>
+        </label>
+        <label data-val="ซัพพลายเออร์" onclick="selectCategory(this)">
+          <input type="radio" name="f_category" value="ซัพพลายเออร์"><span>ซัพพลายเออร์</span>
+        </label>
+      </div>
+      <div class="fieldHint">พิมพ์ชื่อด้านบนแล้วคำแนะนำจะกรองตามประเภทที่เลือกไว้ตรงนี้</div>
+    </div>
+    <div class="field">
+      <label>รถที่ใช้ส่ง/รับ</label>
+      <div class="segGroup" id="f_vehicleGroup">
+        <label class="active" data-val="มอไซ" onclick="selectVehicle(this)">
+          <input type="radio" name="f_vehicle" value="มอไซ" checked><span>🏍️ มอไซ</span>
+        </label>
+        <label data-val="กระบะ" onclick="selectVehicle(this)">
+          <input type="radio" name="f_vehicle" value="กระบะ"><span>🚚 กระบะ</span>
+        </label>
+      </div>
+      <div class="fieldHint">มอไซ: แมสจัดเส้นทางเอง — กระบะ: เซลส์เป็นคนจัดเส้นทางให้ มีแค่ 2 คัน</div>
+    </div>
+    <div class="field" id="f_truckField" style="display:none;">
+      <label>เลือกรถกระบะ</label>
+      <select class="input" id="f_truckId" onchange="renderTruckBookingHint()">
+        <option value="รถกระบะคันที่ 1 (คันเก่า)">รถกระบะคันที่ 1 (คันเก่า)</option>
+        <option value="รถกระบะคันที่ 2 (คันใหม่)">รถกระบะคันที่ 2 (คันใหม่)</option>
+      </select>
+      <div class="fieldHint" style="margin-top:8px;">คิวรถจะเช็คตาม "วันที่ต้องการให้ไปส่ง/รับ" ด้านบนอัตโนมัติ</div>
+      <div id="truckBookingHint" class="fieldHint"></div>
+    </div>
+    <div class="field">
+      <label id="f_timeLabel">ช่วงเวลาที่ลูกค้าสะดวกรับ</label>
+      <div class="segGroup" id="f_timeGroup">
+        <label class="active" data-val="ก่อนเที่ยง" onclick="selectTimePref(this)">
+          <input type="radio" name="f_time" value="ก่อนเที่ยง" checked><span>ก่อนเที่ยง</span>
+        </label>
+        <label data-val="บ่าย" onclick="selectTimePref(this)">
+          <input type="radio" name="f_time" value="บ่าย"><span>บ่าย</span>
+        </label>
+        <label data-val="ระบุเวลา" onclick="selectTimePref(this)">
+          <input type="radio" name="f_time" value="ระบุเวลา"><span>ระบุเวลา</span>
+        </label>
+      </div>
+      <input class="input" type="time" id="f_preferredTime" style="display:none;margin-top:8px;">
+      <div class="fieldHint">ใช้ "ระบุเวลา" ได้ทั้งกรณีลูกค้านัดเวลาที่แน่นอน หรือนัดรับนอกสถานที่ (ใส่ลิงก์ Google Maps ของจุดนัดในช่องที่อยู่ด้านบนได้เลย)</div>
+    </div>
+    <div class="field">
+      <label>ประเภทงาน (เลือกได้หลายอย่าง)</label>
+      <div class="chipGroup chipGroupGrid" id="f_typeGroup">
+        <label class="chip"><input type="checkbox" value="ส่งของบิล IV" onchange="renderQtyList()"><span>ส่งของบิล IV</span></label>
+        <label class="chip"><input type="checkbox" value="ส่งของบิลชั่วคราว" onchange="renderQtyList()"><span>ส่งของบิลชั่วคราว</span></label>
+        <label class="chip"><input type="checkbox" value="ส่งของไม่มีบิล" onchange="renderQtyList()"><span>ส่งของไม่มีบิล</span></label>
+        <label class="chip"><input type="checkbox" value="ส่งพัสดุ" onchange="renderQtyList()"><span>ส่งพัสดุ</span></label>
+        <label class="chip"><input type="checkbox" value="รับของ" onchange="renderQtyList()"><span>รับของ</span></label>
+        <label class="chip"><input type="checkbox" value="วางบิล" onchange="renderQtyList()"><span>วางบิล</span></label>
+        <label class="chip"><input type="checkbox" value="รับเช็ค" onchange="renderQtyList()"><span>รับเช็ค</span></label>
+        <label class="chip"><input type="checkbox" value="รับใบเสร็จ" onchange="renderQtyList()"><span>รับใบเสร็จ</span></label>
+        <label class="chip"><input type="checkbox" value="คืนของ" onchange="renderQtyList()"><span>คืนของ</span></label>
+        <label class="chip"><input type="checkbox" value="อื่นๆ" onchange="renderQtyList()"><span>อื่นๆ</span></label>
+      </div>
+    </div>
+    <div class="field" id="f_qtyField" style="display:none;">
+      <label>จำนวนบิลของแต่ละประเภท (สำหรับให้บัญชีเช็คตอนบิลกลับว่าครบมั้ย)</label>
+      <div id="f_qtyList"></div>
+    </div>
+    <div class="field">
+      <label>เลขที่บิล / เลขอ้างอิง (ถ้ามี)</label>
+      <input class="input" id="f_bill" placeholder="เช่น INV-0472, INV-0473">
+    </div>
+    <div class="modalActions">
+      <button class="btn ghost" onclick="closeModal('addStopModal')">ยกเลิก</button>
+      <button class="btn primary" onclick="submitAddStop()">เพิ่มจุดงาน</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHECK-IN MODAL -->
+<div class="modalOverlay" id="checkinModal">
+  <div class="modal">
+    <h3>เช็คอิน</h3>
+    <div id="checkinName" style="font-weight:700;margin-bottom:10px;"></div>
+    <div class="field">
+      <label>ถ่ายรูปยืนยัน</label>
+      <div class="photoBox" id="photoBox" onclick="document.getElementById('photoInput').click()">
+        📷 แตะเพื่อถ่ายรูป
+      </div>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(event)">
+    </div>
+    <div class="geoLine" id="geoLine">📍 กำลังระบุตำแหน่ง...</div>
+    <div class="geoLine mono" id="timeLine"></div>
+    <div class="modalActions">
+      <button class="btn ghost" onclick="closeModal('checkinModal')">ยกเลิก</button>
+      <button class="btn primary" id="confirmCheckinBtn" onclick="confirmCheckin()" disabled>ยืนยันเช็คอิน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ISSUE MODAL -->
+<div class="modalOverlay" id="issueModal">
+  <div class="modal">
+    <h3>บันทึกปัญหา</h3>
+    <div id="issueName" style="font-weight:700;margin-bottom:10px;"></div>
+    <div class="fieldHint" id="issueHistoryHint" style="margin-bottom:10px;"></div>
+    <div class="field">
+      <label>รายละเอียดปัญหา</label>
+      <textarea class="input" id="i_desc" rows="3" style="resize:vertical;" placeholder="เช่น ลูกค้าปฏิเสธรับของ, สถานที่ปิด, ที่อยู่ผิด, รอนานผิดปกติ ฯลฯ"></textarea>
+    </div>
+    <div class="field">
+      <label>ระดับปัญหา</label>
+      <div class="segGroup" id="i_severityGroup">
+        <label data-val="น้อย" onclick="selectSeverity(this)"><input type="radio" name="i_severity" value="น้อย"><span>น้อย</span></label>
+        <label class="active" data-val="กลาง" onclick="selectSeverity(this)"><input type="radio" name="i_severity" value="กลาง" checked><span>กลาง</span></label>
+        <label data-val="มาก" onclick="selectSeverity(this)"><input type="radio" name="i_severity" value="มาก"><span>มาก</span></label>
+      </div>
+    </div>
+    <div class="field">
+      <label>เคยเกิดปัญหานี้ซ้ำมาก่อนหรือไม่</label>
+      <div class="segGroup" id="i_recurGroup">
+        <label class="active" data-val="no" onclick="selectRecur(this)"><input type="radio" name="i_recur" value="no" checked><span>ไม่เคย</span></label>
+        <label data-val="yes" onclick="selectRecur(this)"><input type="radio" name="i_recur" value="yes"><span>เคยเกิดซ้ำ</span></label>
+      </div>
+    </div>
+    <div class="modalActions">
+      <button class="btn ghost" onclick="closeModal('issueModal')">ยกเลิก</button>
+      <button class="btn ghost" id="removeIssueBtn" style="display:none;color:var(--red);border-color:var(--red);" onclick="removeIssue()">ลบปัญหานี้</button>
+      <button class="btn primary" onclick="submitIssue()">บันทึกปัญหา</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTO VIEWER -->
+<div class="modalOverlay" id="photoViewModal" onclick="closeModal('photoViewModal')">
+  <div class="modal" style="max-width:520px;padding:12px;" onclick="event.stopPropagation()">
+    <img id="photoViewImg" style="width:100%;border-radius:10px;display:block;">
+    <div class="modalActions">
+      <button class="btn ghost" onclick="closeModal('photoViewModal')">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- CONFIG ---------- */
+let sheetWebAppUrl = "";
+/* Detects situations where the browser will refuse GPS no matter what Location Services says:
+   1) the page itself isn't served over https/localhost, or
+   2) the page is embedded inside a sandboxed iframe (e.g. a chat's built-in preview of this file) —
+      iframes without an explicit geolocation permission grant are blocked even when the parent tab is https. */
+function geoWillBeBlocked(){
+  let inIframe = false;
+  try { inIframe = (window.self !== window.top); } catch(e){ inIframe = true; }
+  const insecureOrigin = (location.protocol !== 'https:' && location.hostname !== 'localhost');
+  return { blocked: inIframe || insecureOrigin, inIframe, insecureOrigin };
+}
+function toggleCfg(){ document.getElementById('cfgPanel').classList.toggle('open'); }
+function onSheetUrlChange(){
+  sheetWebAppUrl = document.getElementById('sheetUrl').value.trim();
+  const el = document.getElementById('sheetStatus');
+  if(sheetWebAppUrl){
+    el.textContent = "เชื่อมต่อแล้ว — กำลังโหลดข้อมูลจาก Google Sheet...";
+    el.className = "status ok";
+    try{ localStorage.setItem('futai_sheetUrl', sheetWebAppUrl); }catch(e){}
+    loadBootstrapData();
+  } else {
+    el.textContent = "ยังไม่ได้เชื่อมต่อ — ข้อมูลจะถูกเก็บในหน่วยความจำของเซสชันนี้เท่านั้น";
+    el.className = "status off";
+    try{ localStorage.removeItem('futai_sheetUrl'); }catch(e){}
+  }
+}
+async function syncToSheet(action, payload){
+  if(!sheetWebAppUrl) return;
+  try{
+    await fetch(sheetWebAppUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action, ...payload })
+    });
+  }catch(e){ console.error('sync failed', e); }
+}
+
+/* ---------- DATA ---------- */
+let MESSENGERS = ["กาย","พี่แม็ก","ต่อ","ปลื้ม","ทรอย","วิน"]; // editable roster, add/remove from the Messenger tab
+const UNASSIGNED = "unassigned"; // sentinel messenger value for stops dropped into the shared pool before being assigned
+let SALES = ["พี่หนึ่ง","พี่เฟิร์น","พี่หมวย","นุ่น","ออนไลน์-แก้ว","ออนไลน์-อุ้ม","ออนไลน์-เหมย","ออนไลน์-LP/SP","บัญชี"]; // editable roster, add/remove from the Sales tab
+const TRUCKS = ["รถกระบะคันที่ 1 (คันเก่า)","รถกระบะคันที่ 2 (คันใหม่)"]; // only 2 trucks exist
+const TASK_TYPES = ["ส่งของบิล IV","ส่งของบิลชั่วคราว","ส่งของไม่มีบิล","รับของ","วางบิล","รับเช็ค","รับใบเสร็จ","คืนของ"];
+const todayStr = new Date().toISOString().slice(0,10);
+let stops = []; // {id, messenger, date, name, addr, taskItems:[{type,qty}], billQty, billReturnedQty, billRef, status, checkinTime, lat, lng, photo}
+// IDs must stay unique even when two different devices add stops independently before ever syncing —
+// a simple 1,2,3... counter would collide across devices, so combine a timestamp with a random suffix.
+function generateStopId(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }
+let selectedForAssign = new Set(); // stop ids checked in the unassigned pool, waiting for bulk assignment
+let customerDirectory = {}; // { customerName: [ {addr, category}, ... ] }
+let gmapsApiKey = "";
+let gmapsAutocompleteName = null;
+let gmapsAutocompleteAddr = null;
+let pickedPlace = null; // {lat, lng} from real Google autocomplete selection, if any
+
+function billQtyOf(taskItems){ return (taskItems||[]).reduce((sum,t)=>sum+(t.qty||0),0); }
+
+// seed a little demo data so the app isn't empty on first look
+function seed(){
+  const demo = [
+    {name:"บริษัท ทองไทย จำกัด", addr:"ถ.สีลม กรุงเทพฯ", taskItems:[{type:"วางบิล",qty:1}], category:"ลูกค้า", billRef:"INV-1042", messenger:"กาย", salesName:"พี่หนึ่ง", vehicleType:"มอไซ", timePreference:"ก่อนเที่ยง"},
+    {name:"ร้านเจริญพาณิชย์", addr:"ถ.เจริญกรุง กรุงเทพฯ", taskItems:[{type:"รับเช็ค",qty:1},{type:"รับใบเสร็จ",qty:1}], category:"ลูกค้า", billRef:"CHQ-0093", messenger:"กาย", salesName:"พี่เฟิร์น", vehicleType:"มอไซ", timePreference:"บ่าย"},
+    {name:"หจก. รุ่งเรืองการช่าง", addr:"ถ.รัชดาภิเษก กรุงเทพฯ", taskItems:[{type:"ส่งของบิล IV",qty:2}], category:"ซัพพลายเออร์", billRef:"", messenger:"พี่แม็ก", salesName:"นุ่น", vehicleType:"มอไซ", timePreference:"ก่อนเที่ยง"},
+    {name:"บจก. เอเชียซัพพลาย", addr:"ถ.พระราม 4 กรุงเทพฯ", taskItems:[{type:"วางบิล",qty:1},{type:"รับของ",qty:1}], category:"ซัพพลายเออร์", billRef:"INV-1088", messenger:"ต่อ", salesName:"ออนไลน์-แก้ว", vehicleType:"กระบะ", truckId:"รถกระบะคันที่ 1 (คันเก่า)", timePreference:"บ่าย"},
+  ];
+  demo.forEach(d=>{
+    const id = generateStopId();
+    stops.push({
+      id, sortIndex: id, messenger:d.messenger, date: todayStr, name:d.name, addr:d.addr,
+      taskItems:d.taskItems, category:d.category, billRef:d.billRef, billQty: billQtyOf(d.taskItems), billReturnedQty:0,
+      salesName: d.salesName || '', vehicleType: d.vehicleType || 'มอไซ', truckId: d.truckId || '',
+      timePreference: d.timePreference || '', preferredTime: d.preferredTime || '',
+      status:'pending', checkinTime:null, lat:null, lng:null, photo:null,
+      hasIssue:false, issueDesc:'', issueSeverity:null, issueRecurring:false
+    });
+    rememberCustomer(d.name, d.addr, d.category);
+  });
+}
+seed();
+
+/* ---------- INIT SELECTS ---------- */
+function fillMessengerSelect(sel, includeAll){
+  const prevValue = sel.value;
+  sel.innerHTML = "";
+  if(includeAll){
+    const o = document.createElement('option'); o.value="all"; o.textContent="ทุกคน"; sel.appendChild(o);
+  }
+  MESSENGERS.forEach(m=>{
+    const o = document.createElement('option'); o.value=m; o.textContent=m; sel.appendChild(o);
+  });
+  if(prevValue && (prevValue==='all' || MESSENGERS.includes(prevValue))) sel.value = prevValue;
+}
+function fillMessengerSelectWithPool(sel){
+  const prevValue = sel.value;
+  sel.innerHTML = "";
+  const pool = document.createElement('option'); pool.value = UNASSIGNED; pool.textContent = "📥 ยังไม่มอบหมาย (Pool กลาง)"; sel.appendChild(pool);
+  MESSENGERS.forEach(m=>{
+    const o = document.createElement('option'); o.value=m; o.textContent=m; sel.appendChild(o);
+  });
+  if(prevValue && (prevValue===UNASSIGNED || MESSENGERS.includes(prevValue))) sel.value = prevValue;
+}
+function refreshMessengerSelects(){
+  fillMessengerSelectWithPool(document.getElementById('msgSelect'));
+  fillMessengerSelect(document.getElementById('acctPersonFilter'), true);
+  fillMessengerSelect(document.getElementById('admPerson'), true);
+}
+fillMessengerSelectWithPool(document.getElementById('msgSelect'));
+document.getElementById('msgDate').value = todayStr;
+fillMessengerSelect(document.getElementById('acctPersonFilter'), true);
+fillMessengerSelect(document.getElementById('admPerson'), true);
+
+function addMessengerName(){
+  const input = document.getElementById('msgNewName');
+  const name = input.value.trim();
+  if(!name){ alert("พิมพ์ชื่อเมสเซนเจอร์ก่อนนะครับ"); return; }
+  if(name === UNASSIGNED || MESSENGERS.includes(name)){ alert("มีชื่อนี้อยู่แล้ว"); input.value=""; return; }
+  MESSENGERS.push(name);
+  syncToSheet('addMessenger', { name });
+  input.value = "";
+  refreshMessengerSelects();
+  document.getElementById('msgSelect').value = name;
+  renderMessenger();
+  renderAccounting();
+  renderAdmin();
+}
+function removeMessengerName(){
+  const sel = document.getElementById('msgSelect');
+  const name = sel.value;
+  if(name === UNASSIGNED){ alert("อันนี้คือพูลกลาง ไม่ใช่ชื่อเมสเซนเจอร์ เลือกชื่อคนจริงก่อนถึงจะลบได้"); return; }
+  if(!name) return;
+  if(!confirm(`ลบชื่อเมสเซนเจอร์ "${name}" ออกจากรายชื่อใช่ไหม? (งานที่เคยมอบหมายให้คนนี้ไว้จะยังอยู่ในระบบ ไม่หาย)`)) return;
+  MESSENGERS = MESSENGERS.filter(n=>n!==name);
+  syncToSheet('removeMessenger', { name });
+  refreshMessengerSelects();
+  renderMessenger();
+  renderAccounting();
+  renderAdmin();
+}
+async function loadMessengersFromSheet(){
+  if(!sheetWebAppUrl) return;
+  try{
+    const res = await fetch(sheetWebAppUrl + (sheetWebAppUrl.includes('?')?'&':'?') + 'action=messengerRoster');
+    const data = await res.json();
+    if(Array.isArray(data) && data.length>0){
+      data.forEach(name=>{ if(name && !MESSENGERS.includes(name)) MESSENGERS.push(name); });
+      refreshMessengerSelects();
+      renderMessenger();
+      renderAccounting();
+      renderAdmin();
+    }
+  }catch(e){ console.error('load messenger roster failed', e); }
+}
+
+function fillSalesSelect(sel, includeBlank){
+  const prevValue = sel.value;
+  sel.innerHTML = "";
+  if(includeBlank){
+    const o = document.createElement('option'); o.value=""; o.textContent="- ไม่ระบุ -"; sel.appendChild(o);
+  }
+  SALES.forEach(name=>{
+    const o = document.createElement('option'); o.value=name; o.textContent=name; sel.appendChild(o);
+  });
+  if(prevValue && SALES.includes(prevValue)) sel.value = prevValue;
+}
+function refreshSalesSelects(){
+  fillSalesSelect(document.getElementById('f_sales'), true);
+  fillSalesSelect(document.getElementById('salesSelect'), false);
+}
+refreshSalesSelects();
+// salesDateFilter starts blank (all dates) — it's a pure filter now, not a value used when creating a stop
+
+(function fillMonthYear(){
+  const monthSel = document.getElementById('admMonth');
+  const months = ["ทุกเดือน","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  months.forEach((m,i)=>{
+    const o = document.createElement('option'); o.value = i===0 ? "all" : i; o.textContent = m; monthSel.appendChild(o);
+  });
+  monthSel.value = new Date().getMonth()+1;
+
+  const yearSel = document.getElementById('admYear');
+  const thisYear = new Date().getFullYear();
+  const allOpt = document.createElement('option'); allOpt.value="all"; allOpt.textContent="ทุกปี"; yearSel.appendChild(allOpt);
+  for(let y=thisYear-1;y<=thisYear+1;y++){
+    const o = document.createElement('option'); o.value=y; o.textContent=y+543; yearSel.appendChild(o); // buddhist era label
+  }
+  yearSel.value = thisYear;
+})();
+
+/* ---------- TABS ---------- */
+function switchTab(tab){
+  ['messenger','sales','accounting','admin'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = (t===tab)?'block':'none';
+  });
+  document.querySelectorAll('nav.tabs button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab===tab);
+  });
+  if(tab==='messenger') renderMessenger();
+  if(tab==='sales') renderSales();
+  if(tab==='accounting') renderAccounting();
+  if(tab==='admin') renderAdmin();
+}
+
+/* ---------- MESSENGER VIEW ---------- */
+function currentMessenger(){ return document.getElementById('msgSelect').value; }
+function currentDate(){ return document.getElementById('msgDate').value; }
+
+function renderMessenger(){
+  const m = currentMessenger();
+  const d = currentDate();
+  const isPool = (m === UNASSIGNED);
+  if(!isPool) selectedForAssign.clear();
+  const list = stops.filter(s=>s.messenger===m && s.date===d).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0));
+  const container = document.getElementById('stopList');
+  const done = list.filter(s=>s.status==='done').length;
+  const totalBillQty = list.reduce((sum,s)=>sum+(s.billQty||0),0);
+
+  document.getElementById('msgSummary').innerHTML = isPool ? `
+    <div class="kpi"><div class="num">${list.length}</div><div class="lbl">จุดในพูลวันนี้</div></div>
+    <div class="kpi"><div class="num">${selectedForAssign.size}</div><div class="lbl">เลือกไว้รอมอบหมาย</div></div>
+    <div class="kpi"><div class="num">${totalBillQty}</div><div class="lbl">จำนวนบิล/เช็ครวม</div></div>
+  ` : `
+    <div class="kpi"><div class="num">${list.length}</div><div class="lbl">จุดงานวันนี้</div></div>
+    <div class="kpi"><div class="num">${done}</div><div class="lbl">เช็คอินแล้ว</div></div>
+    <div class="kpi"><div class="num">${list.length-done}</div><div class="lbl">ยังไม่เช็คอิน</div></div>
+    <div class="kpi"><div class="num">${totalBillQty}</div><div class="lbl">จำนวนบิล/เช็ครวม</div></div>
+  `;
+
+  if(list.length===0){
+    container.innerHTML = isPool
+      ? `<div class="emptyState"><div class="disp">พูลกลางยังไม่มีจุดงาน</div>กด "เพิ่มจุดงาน" เพื่อทยอยใส่สถานที่ทั้งหมดที่เซลส์แจ้งมา แล้วค่อยจัดเรียง/มอบหมายทีหลัง</div>`
+      : `<div class="emptyState"><div class="disp">ยังไม่มีจุดงานของ${m}วันนี้</div>กด "เพิ่มจุดงาน" เพื่อเริ่มวางแผนเส้นทาง หรือมอบหมายจากพูลกลาง</div>`;
+    return;
+  }
+
+  const bulkBar = (isPool && list.length>0) ? `
+    <div class="bulkBar">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="selectAllUnassigned" onchange="toggleSelectAll(this.checked)" ${list.every(s=>selectedForAssign.has(s.id))?'checked':''}>
+        เลือกทั้งหมด
+      </label>
+      <span class="fieldHint" style="margin:0;">เลือกแล้ว ${selectedForAssign.size} ที่</span>
+      <select id="bulkAssignSelect" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line);">
+        <option value="">มอบหมายที่เลือกให้...</option>
+        ${MESSENGERS.map(name=>`<option value="${name}">${name}</option>`).join('')}
+      </select>
+      <button class="btn small primary" onclick="bulkAssign()">มอบหมาย</button>
+    </div>
+  ` : '';
+
+  const hint = isPool
+    ? `<div class="fieldHint" style="margin-bottom:2px;">ลากไอคอน ⠿ เพื่อจัดลำดับตามความใกล้ก่อน แล้วติ๊กเลือก → มอบหมายให้แมสแต่ละคนด้านบน</div>`
+    : (list.length>1 ? `<div class="fieldHint" style="margin-bottom:2px;">ลากไอคอน ⠿ เพื่อสลับลำดับเส้นทางเอง — เรียงจุดที่ใกล้ที่สุดไว้ก่อน</div>` : '');
+
+  container.innerHTML = bulkBar + hint + list.map((s,i)=>{
+    const mapUrl = isMapLink(s.addr) ? s.addr : ("https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(s.addr));
+    return `
+    <div class="stopCard ${s.status==='done'?'done':''}" draggable="true"
+      ondragstart="handleDragStart(event, ${s.id})" ondragover="event.preventDefault()" ondrop="handleDrop(event, ${s.id})">
+      <div style="display:flex;gap:10px;">
+        ${isPool ? `<input type="checkbox" style="margin-top:4px;cursor:pointer;" ${selectedForAssign.has(s.id)?'checked':''} onchange="toggleStopSelect(${s.id}, this.checked)">` : ''}
+        <div class="dragHandle" title="ลากเพื่อสลับลำดับ">⠿</div>
+        <div>
+          <div class="idx">จุดที่ ${i+1} จาก ${list.length}</div>
+          <div class="name">${escapeHtml(s.name)}</div>
+          <div class="addr">${isMapLink(s.addr) ? '🔗 ลิงก์ Google Maps' : escapeHtml(s.addr)}</div>
+          <div class="meta">
+            <span class="badge category-${s.category==='ซัพพลายเออร์'?'supplier':'customer'}">${s.category||'ลูกค้า'}</span>
+            ${(s.taskItems||[]).map(t=>`<span class="badge type">${escapeHtml(t.type)}${t.qty>1?' ×'+t.qty:''}</span>`).join("")}
+            ${s.billQty>0?`<span class="badge bill">📄 ${s.billQty} บิล</span>`:""}
+            ${s.billRef?`<span class="badge bill">#${escapeHtml(s.billRef)}</span>`:""}
+            ${s.vehicleType==='กระบะ'?`<span class="badge type">🚚 ${escapeHtml(s.truckId||'กระบะ')}</span>`:`<span class="badge type">🏍️ มอไซ</span>`}
+            ${s.timePreference?`<span class="badge type">🕐 ${s.timePreference==='ระบุเวลา' && s.preferredTime ? s.preferredTime : s.timePreference}</span>`:``}
+            ${s.salesName?`<span class="badge type">👤 ${escapeHtml(s.salesName)}</span>`:``}
+            ${s.status==='done'?`<span class="badge done">เช็คอินแล้ว</span>`:``}
+            ${s.hasIssue?`<span class="badge issue-${s.issueSeverity==='มาก'?'high':s.issueSeverity==='กลาง'?'med':'low'}">⚠ ปัญหา${s.issueSeverity}</span>`:``}
+            ${s.hasIssue && s.issueRecurring?`<span class="badge issue-recur">↻ เกิดซ้ำ</span>`:``}
+          </div>
+          ${s.status==='done'?`<div class="checkinfo">✓ ${s.checkinTime} ${s.lat?('· '+s.lat.toFixed(4)+', '+s.lng.toFixed(4)):''}</div>`:``}
+          ${s.status==='done' && s.photo?`<img class="checkinThumb" src="${s.photo}" onclick="openPhotoViewer(${s.id})" title="ดูรูปเช็คอิน">`:``}
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn small ghost" draggable="false" style="text-decoration:none;text-align:center;" href="${mapUrl}" target="_blank" rel="noopener">🧭 นำทาง</a>
+        ${isPool ? `
+        <select style="padding:7px 10px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;" onchange="if(this.value) quickAssign(${s.id}, this.value);">
+          <option value="">มอบหมายให้...</option>
+          ${MESSENGERS.map(name=>`<option value="${name}">${name}</option>`).join('')}
+        </select>
+        ` : `
+        <button class="btn small ${s.status==='done'?'ghost':'primary'}" ${s.status==='done'?'disabled':''} onclick="openCheckin(${s.id})">
+          ${s.status==='done'?'เช็คอินแล้ว':'📍 เช็คอิน'}
+        </button>
+        <button class="btn small ghost" style="${s.hasIssue?'color:var(--red);border-color:var(--red);':''}" onclick="openIssueModal(${s.id})">
+          ${s.hasIssue?'⚠ แก้ไขปัญหา':'+ บันทึกปัญหา'}
+        </button>
+        `}
+        <button class="btn small ghost" style="color:var(--red);border-color:var(--red);" onclick="deleteStop(${s.id})">🗑 ลบจุดนี้</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function toggleStopSelect(id, checked){
+  if(checked) selectedForAssign.add(id); else selectedForAssign.delete(id);
+  renderMessenger();
+}
+function toggleSelectAll(checked){
+  const m = currentMessenger();
+  const d = currentDate();
+  const ids = stops.filter(s=>s.messenger===m && s.date===d).map(s=>s.id);
+  if(checked) ids.forEach(id=>selectedForAssign.add(id));
+  else ids.forEach(id=>selectedForAssign.delete(id));
+  renderMessenger();
+}
+function assignStopTo(id, messengerName){
+  const s = stops.find(x=>x.id===id);
+  if(!s) return;
+  const maxSort = Math.max(0, ...stops.filter(x=>x.messenger===messengerName && x.date===s.date).map(x=>x.sortIndex||0));
+  s.messenger = messengerName;
+  s.sortIndex = maxSort + 10;
+  syncToSheet('assignStop', { id: s.id, messenger: messengerName });
+}
+function quickAssign(id, messengerName){
+  assignStopTo(id, messengerName);
+  selectedForAssign.delete(id);
+  renderMessenger();
+}
+function bulkAssign(){
+  const select = document.getElementById('bulkAssignSelect');
+  const messengerName = select ? select.value : '';
+  if(!messengerName){ alert("กรุณาเลือกชื่อแมสที่จะมอบหมายให้ก่อน"); return; }
+  if(selectedForAssign.size===0){ alert("ยังไม่ได้เลือกจุดงานเลย ติ๊กเลือกจากลิสต์ก่อนนะครับ"); return; }
+  Array.from(selectedForAssign).forEach(id=>assignStopTo(id, messengerName));
+  selectedForAssign.clear();
+  renderMessenger();
+}
+
+function isMapLink(addr){
+  return typeof addr === 'string' && /^https?:\/\//i.test(addr.trim());
+}
+function deleteStop(id){
+  const s = stops.find(x=>x.id===id);
+  if(!s) return;
+  if(!confirm(`ลบจุดงาน "${s.name}" ใช่ไหม? ข้อมูลเช็คอิน รูปถ่าย และปัญหาที่บันทึกไว้ของจุดนี้จะหายไปด้วย`)) return;
+  stops = stops.filter(x=>x.id!==id);
+  syncToSheet('deleteStop', { id });
+  renderMessenger();
+  renderAccounting();
+  renderAdmin();
+}
+
+
+/* Drag-to-reorder: lets the messenger arrange stops in whatever order suits the actual route */
+let dragSourceId = null;
+function handleDragStart(ev, id){
+  dragSourceId = id;
+  ev.dataTransfer.effectAllowed = 'move';
+  try{ ev.dataTransfer.setData('text/plain', String(id)); }catch(e){}
+}
+function handleDrop(ev, targetId){
+  ev.preventDefault();
+  if(dragSourceId==null || dragSourceId===targetId) return;
+  const m = currentMessenger();
+  const d = currentDate();
+  const list = stops.filter(s=>s.messenger===m && s.date===d).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0));
+  const fromIdx = list.findIndex(s=>s.id===dragSourceId);
+  const toIdx = list.findIndex(s=>s.id===targetId);
+  if(fromIdx===-1 || toIdx===-1) return;
+  const [moved] = list.splice(fromIdx,1);
+  list.splice(toIdx,0,moved);
+  list.forEach((s,i)=>{ s.sortIndex = i*10; });
+  dragSourceId = null;
+  renderMessenger();
+}
+
+function openRouteAll(){
+  const m = currentMessenger();
+  const d = currentDate();
+  const fullList = stops.filter(s=>s.messenger===m && s.date===d && s.status!=='done').sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0));
+  if(fullList.length===0){ alert("ไม่มีจุดงานที่ยังไม่เช็คอินสำหรับวันนี้"); return; }
+
+  // Stops saved as a Google Maps link can't be merged into a multi-stop route (Google's dir API
+  // needs plain text/coordinates for waypoints) — route only the plain-address stops, and tell
+  // the messenger to use each link stop's own "นำทาง" button separately.
+  const linkStops = fullList.filter(s=>isMapLink(s.addr));
+  const list = fullList.filter(s=>!isMapLink(s.addr));
+  if(linkStops.length>0){
+    alert(`จุดที่บันทึกเป็นลิงก์ Google Maps (${linkStops.map(s=>s.name).join(', ')}) จะไม่รวมในเส้นทางนี้ — กด "นำทาง" ที่จุดนั้นแยกต่างหากนะครับ`);
+  }
+  if(list.length===0){ return; }
+  const dest = encodeURIComponent(list[list.length-1].addr);
+  const waypoints = list.slice(0,-1).map(s=>encodeURIComponent(s.addr)).join("|");
+  let url = `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
+  if(waypoints) url += `&waypoints=${waypoints}`;
+  window.open(url, '_blank');
+}
+
+/* ---------- ADD STOP ---------- */
+let addStopFromSales = false;
+function openAddStop(){
+  addStopFromSales = document.getElementById('tab-sales').style.display !== 'none';
+  document.getElementById('f_name').value = "";
+  document.getElementById('f_addr').value = "";
+  document.getElementById('f_bill').value = "";
+  document.querySelectorAll('#f_typeGroup input[type=checkbox]').forEach(cb=>cb.checked=false);
+  document.getElementById('f_qtyList').innerHTML = "";
+  document.getElementById('f_qtyField').style.display = "none";
+  document.querySelectorAll('#f_categoryGroup label').forEach(l=>{
+    l.classList.toggle('active', l.dataset.val === 'ลูกค้า');
+    l.querySelector('input').checked = (l.dataset.val === 'ลูกค้า');
+  });
+  document.querySelectorAll('#f_vehicleGroup label').forEach(l=>{
+    l.classList.toggle('active', l.dataset.val === 'มอไซ');
+    l.querySelector('input').checked = (l.dataset.val === 'มอไซ');
+  });
+  document.getElementById('f_truckField').style.display = "none";
+  document.querySelectorAll('#f_timeGroup label').forEach(l=>{
+    l.classList.toggle('active', l.dataset.val === 'ก่อนเที่ยง');
+    l.querySelector('input').checked = (l.dataset.val === 'ก่อนเที่ยง');
+  });
+  document.getElementById('f_preferredTime').style.display = "none";
+  updateTimeLabel();
+  document.getElementById('f_sales').value = addStopFromSales ? (document.getElementById('salesSelect').value || '') : '';
+  const activeDate = addStopFromSales ? document.getElementById('salesDateFilter').value : currentDate();
+  document.getElementById('f_deliveryDate').value = activeDate || todayStr;
+  document.getElementById('f_truckId').value = TRUCKS[0];
+  renderTruckBookingHint();
+  document.getElementById('nameSuggestions').classList.remove('open');
+  document.getElementById('addrChips').innerHTML = "";
+  document.getElementById('addrHint').textContent = gmapsApiKey
+    ? "พิมพ์ที่อยู่แล้วเลือกจากคำแนะนำของ Google Maps ได้เลย หรือวางลิงก์ Google Maps ก็ได้เช่นกัน"
+    : "แนะนำให้เปิด Google Maps หาสถานที่นั้น กดปุ่ม \"แชร์\" แล้วคัดลอกลิงก์มาวางตรงนี้ — แม่นยำกว่าพิมพ์ที่อยู่เอง โดยเฉพาะสถานที่ที่หายาก";
+  pickedPlace = null;
+  openModal('addStopModal');
+  if(sheetWebAppUrl) loadCustomersFromSheet(); // pick up any rows added straight into the Sheet
+}
+function selectCategory(label){
+  document.querySelectorAll('#f_categoryGroup label').forEach(l=>l.classList.remove('active'));
+  label.classList.add('active');
+  label.querySelector('input').checked = true;
+  updateTimeLabel();
+  onNameInput(); // re-filter name suggestions for the newly selected category
+}
+function updateTimeLabel(){
+  const category = document.querySelector('#f_categoryGroup input[name=f_category]:checked').value;
+  document.getElementById('f_timeLabel').textContent = category === 'ซัพพลายเออร์'
+    ? "ช่วงเวลาที่ซัพพลายเออร์ให้มารับของ"
+    : "ช่วงเวลาที่ลูกค้าสะดวกรับ";
+}
+function selectVehicle(label){
+  document.querySelectorAll('#f_vehicleGroup label').forEach(l=>l.classList.remove('active'));
+  label.classList.add('active');
+  label.querySelector('input').checked = true;
+  const isTruck = label.dataset.val === 'กระบะ';
+  document.getElementById('f_truckField').style.display = isTruck ? 'block' : 'none';
+  if(isTruck) renderTruckBookingHint();
+}
+function selectTimePref(label){
+  document.querySelectorAll('#f_timeGroup label').forEach(l=>l.classList.remove('active'));
+  label.classList.add('active');
+  label.querySelector('input').checked = true;
+  document.getElementById('f_preferredTime').style.display = (label.dataset.val === 'ระบุเวลา') ? 'block' : 'none';
+}
+function renderTruckBookingHint(){
+  const truckId = document.getElementById('f_truckId').value;
+  const date = document.getElementById('f_deliveryDate').value;
+  const el = document.getElementById('truckBookingHint');
+  if(!date){ el.textContent = ''; return; }
+  const booked = stops.filter(s=>s.vehicleType==='กระบะ' && s.truckId===truckId && s.date===date);
+  if(booked.length===0){
+    el.textContent = `${truckId} ว่างในวันที่เลือกนี้`;
+  } else {
+    const list = booked.map(s=> s.name + (isMapLink(s.addr) ? '' : ' ('+s.addr+')') ).join(', ');
+    el.textContent = `${truckId} มีคิวแล้ว ${booked.length} จุดในวันนี้: ${list} — เช็คว่าทางเดียวกันไหมก่อนจองซ้อน ถ้าทางฉีกมากให้เลือกอีกคัน หรือเปลี่ยนวันที่`;
+  }
+}
+
+/* Customer directory: remember addresses per customer name, offer multiple */
+function rememberCustomer(name, addr, category, skipSync){
+  if(!name || !addr) return;
+  if(!customerDirectory[name]) customerDirectory[name] = [];
+  const exists = customerDirectory[name].some(a => a.addr.trim().toLowerCase() === addr.trim().toLowerCase());
+  if(!exists) customerDirectory[name].push({ addr, category: category || 'ลูกค้า' });
+  if(!skipSync) syncToSheet('customerAddress', { name, addr, category: category || 'ลูกค้า' });
+}
+function onNameInput(){
+  const q = document.getElementById('f_name').value.trim().toLowerCase();
+  const category = document.querySelector('#f_categoryGroup input[name=f_category]:checked').value;
+  const box = document.getElementById('nameSuggestions');
+  if(!q){ box.classList.remove('open'); renderAddressChips(null); return; }
+  const matches = Object.keys(customerDirectory)
+    .filter(n => n.toLowerCase().includes(q))
+    .filter(n => customerDirectory[n].some(a => (a.category||'ลูกค้า') === category))
+    .slice(0,6);
+  if(matches.length===0){ box.classList.remove('open'); renderAddressChips(null); return; }
+  box.innerHTML = matches.map(n=>{
+    const count = customerDirectory[n].filter(a=>(a.category||'ลูกค้า')===category).length;
+    return `<div class="opt" onclick="selectCustomerName('${n.replace(/'/g,"\\'")}')">${escapeHtml(n)}<div class="sub">${count} ที่อยู่ที่เคยบันทึกไว้ (${category})</div></div>`;
+  }).join("");
+  box.classList.add('open');
+}
+function selectCustomerName(name){
+  document.getElementById('f_name').value = name;
+  document.getElementById('nameSuggestions').classList.remove('open');
+  renderAddressChips(name);
+}
+function renderAddressChips(name){
+  const wrap = document.getElementById('addrChips');
+  const category = document.querySelector('#f_categoryGroup input[name=f_category]:checked').value;
+  if(!name || !customerDirectory[name] || customerDirectory[name].length===0){
+    wrap.innerHTML = "";
+    return;
+  }
+  const addrs = customerDirectory[name].filter(a=>(a.category||'ลูกค้า')===category);
+  wrap.innerHTML = addrs.map((a,i)=>
+    `<span class="addrChip" onclick="pickAddress(this,'${a.addr.replace(/'/g,"\\'")}')">📍 ${escapeHtml(a.addr)}</span>`
+  ).join("") + `<span class="addrChip newAddr" onclick="clearAddressPick(this)">+ ที่อยู่ใหม่</span>`;
+}
+function pickAddress(el, addr){
+  document.querySelectorAll('#addrChips .addrChip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('f_addr').value = addr;
+}
+function clearAddressPick(el){
+  document.querySelectorAll('#addrChips .addrChip').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('f_addr').value = "";
+  document.getElementById('f_addr').focus();
+}
+
+function renderQtyList(){
+  const checked = Array.from(document.querySelectorAll('#f_typeGroup input[type=checkbox]:checked')).map(cb=>cb.value);
+  const wrap = document.getElementById('f_qtyList');
+  const field = document.getElementById('f_qtyField');
+  if(checked.length===0){ wrap.innerHTML = ""; field.style.display = "none"; return; }
+  field.style.display = "block";
+  // preserve any quantities / custom text already entered before re-rendering
+  const prevQty = {};
+  const prevCustom = {};
+  wrap.querySelectorAll('.qtyRow').forEach(row=>{
+    prevQty[row.dataset.type] = row.querySelector('input[type=number]').value;
+    const customInput = row.querySelector('input[type=text]');
+    if(customInput) prevCustom[row.dataset.type] = customInput.value;
+  });
+  wrap.innerHTML = checked.map(t=>{
+    if(t === 'อื่นๆ'){
+      return `
+      <div class="qtyRow" data-type="${escapeHtml(t)}">
+        <input type="text" placeholder="ระบุประเภทงาน" value="${escapeHtml(prevCustom[t]||'')}" style="flex:1;margin-right:8px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);font-family:'Sarabun';">
+        <input type="number" min="1" value="${prevQty[t] || 1}">
+      </div>`;
+    }
+    return `
+    <div class="qtyRow" data-type="${escapeHtml(t)}">
+      <span class="qtyName">${escapeHtml(t)}</span>
+      <input type="number" min="1" value="${prevQty[t] || 1}">
+    </div>`;
+  }).join("");
+}
+
+function submitAddStop(){
+  const name = document.getElementById('f_name').value.trim();
+  const addr = document.getElementById('f_addr').value.trim();
+  const category = document.querySelector('#f_categoryGroup input[name=f_category]:checked').value;
+  const billRef = document.getElementById('f_bill').value.trim();
+  const salesName = document.getElementById('f_sales').value;
+  const vehicleType = document.querySelector('#f_vehicleGroup input[name=f_vehicle]:checked').value;
+  const truckId = vehicleType === 'กระบะ' ? document.getElementById('f_truckId').value : '';
+  const timePreference = document.querySelector('#f_timeGroup input[name=f_time]:checked').value;
+  const preferredTime = timePreference === 'ระบุเวลา' ? document.getElementById('f_preferredTime').value : '';
+  const taskItems = Array.from(document.querySelectorAll('#f_qtyList .qtyRow')).map(row=>{
+    const qty = Math.max(1, parseInt(row.querySelector('input[type=number]').value, 10) || 1);
+    if(row.dataset.type === 'อื่นๆ'){
+      const customText = row.querySelector('input[type=text]').value.trim();
+      return { type: customText || 'อื่นๆ', qty };
+    }
+    return { type: row.dataset.type, qty };
+  });
+  if(!name || !addr){ alert("กรุณากรอกชื่อและที่อยู่"); return; }
+  if(taskItems.length===0){ alert("กรุณาเลือกประเภทงานอย่างน้อย 1 อย่าง"); return; }
+  const deliveryDate = document.getElementById('f_deliveryDate').value;
+  if(!deliveryDate){ alert("กรุณาเลือกวันที่ต้องการให้ไปส่ง/รับ"); return; }
+  const billQty = billQtyOf(taskItems);
+
+  // Stops added from the Sales tab always land in the shared pool for dispatch to assign later;
+  // stops added from the Messenger tab go straight to whichever person/pool is currently selected.
+  // Either way, the stop's date is now always the explicit "วันที่ต้องการให้ไปส่ง/รับ" field —
+  // this is what makes the Sales tab and Messenger tab agree on which day a job belongs to,
+  // and lets sales plan deliveries days in advance.
+  const messenger = addStopFromSales ? UNASSIGNED : currentMessenger();
+  const date = deliveryDate;
+
+  const newId = generateStopId();
+  const s = {
+    id: newId, sortIndex: newId, messenger, date,
+    name, addr, taskItems, category, billRef, billQty, billReturnedQty: 0, status:'pending', checkinTime:null,
+    lat: pickedPlace ? pickedPlace.lat : null, lng: pickedPlace ? pickedPlace.lng : null,
+    photo:null,
+    salesName, vehicleType, truckId, timePreference, preferredTime,
+    hasIssue:false, issueDesc:'', issueSeverity:null, issueRecurring:false
+  };
+  stops.push(s);
+  rememberCustomer(name, addr, category);
+  syncToSheet('addStop', {
+    ...s,
+    taskItemsText: taskItems.map(t=>`${t.type} x${t.qty}`).join('; ')
+  });
+  closeModal('addStopModal');
+  if(addStopFromSales) renderSales(); else renderMessenger();
+}
+
+/* Optional real Google Maps address autocomplete, only active once a key is supplied */
+function onGmapsKeyChange(){
+  gmapsApiKey = document.getElementById('gmapsKey').value.trim();
+  const el = document.getElementById('gmapsStatus');
+  if(!gmapsApiKey){
+    el.textContent = "ยังไม่ได้ใส่ — ช่องที่อยู่จะเป็นการพิมพ์เองหรือเลือกจากรายชื่อที่เคยบันทึกไว้";
+    el.className = "status off";
+    try{ localStorage.removeItem('futai_gmapsKey'); }catch(e){}
+    return;
+  }
+  try{ localStorage.setItem('futai_gmapsKey', gmapsApiKey); }catch(e){}
+  el.textContent = "กำลังเชื่อมต่อ Google Maps...";
+  el.className = "status off";
+  loadGmapsScript();
+}
+function loadGmapsScript(){
+  if(document.getElementById('gmapsScriptTag')) { document.getElementById('gmapsScriptTag').remove(); }
+
+  // Google calls this global function when the API key/billing/referrer setup is invalid.
+  // Without this hook, that failure is silent — the script "loads" fine and our init code
+  // runs without throwing, but every actual autocomplete request afterwards just fails quietly.
+  window.gm_authFailure = function(){
+    document.getElementById('gmapsStatus').textContent =
+      "❌ Google ปฏิเสธ API Key นี้ (auth failure) — สาเหตุที่พบบ่อยที่สุด: (1) ยังไม่ได้เปิดใช้งาน \"Places API\" ตัวเก่า (ไม่ใช่แค่ \"Places API (New)\") ใน Cloud Console, (2) ยังไม่ได้ผูก Billing บนโปรเจกต์นี้, (3) ตั้ง HTTP referrer restriction ไว้ไม่ตรงกับโดเมนที่เปิดอยู่ตอนนี้ — เช็คทีละข้อในหน้า Google Cloud Console";
+    document.getElementById('gmapsStatus').className = "status off";
+  };
+
+  window.initGmapsAutocomplete = function(){
+    try{
+      const addrInput = document.getElementById('f_addr');
+      gmapsAutocompleteAddr = new google.maps.places.Autocomplete(addrInput, { componentRestrictions: { country: 'th' } });
+      gmapsAutocompleteAddr.addListener('place_changed', ()=>{
+        const place = gmapsAutocompleteAddr.getPlace();
+        if(place && place.formatted_address){ document.getElementById('f_addr').value = place.formatted_address; }
+        if(place && place.geometry && place.geometry.location){
+          pickedPlace = { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() };
+        }
+      });
+
+      // Also search by business/place name (the way Google Maps itself works) — picking a result
+      // here fills in both the name and its real address/coordinates in one step.
+      const nameInput = document.getElementById('f_name');
+      gmapsAutocompleteName = new google.maps.places.Autocomplete(nameInput, { componentRestrictions: { country: 'th' } });
+      gmapsAutocompleteName.addListener('place_changed', ()=>{
+        const place = gmapsAutocompleteName.getPlace();
+        if(place && (place.name || place.formatted_address)){
+          document.getElementById('f_name').value = place.name || place.formatted_address;
+          document.getElementById('nameSuggestions').classList.remove('open');
+        }
+        if(place && place.formatted_address){ document.getElementById('f_addr').value = place.formatted_address; }
+        if(place && place.geometry && place.geometry.location){
+          pickedPlace = { lat: place.geometry.location.lat(), lng: place.geometry.location.lng() };
+        }
+      });
+
+      document.getElementById('gmapsStatus').textContent = "เชื่อมต่อแล้ว — พิมพ์ชื่อร้าน/สถานที่ในช่อง \"ชื่อลูกค้า\" หรือพิมพ์ที่อยู่ในช่อง \"ที่อยู่\" ก็แนะนำจาก Google Maps จริงได้ทั้งคู่ (ถ้าพิมพ์แล้วยังไม่มีคำแนะนำขึ้น ให้เปิด Console ในเบราว์เซอร์ดู error เพิ่มเติม หรือเช็คว่าเปิด Billing + เปิด \"Places API\" ตัวเก่าไว้แล้ว)";
+      document.getElementById('gmapsStatus').className = "status ok";
+    }catch(e){
+      document.getElementById('gmapsStatus').textContent = "เชื่อมต่อไม่สำเร็จ: " + e.message + " — ตรวจสอบ API Key และการเปิดใช้งาน Places API";
+      document.getElementById('gmapsStatus').className = "status off";
+    }
+  };
+  const tag = document.createElement('script');
+  tag.id = 'gmapsScriptTag';
+  tag.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(gmapsApiKey)}&libraries=places&callback=initGmapsAutocomplete`;
+  tag.onerror = ()=>{
+    document.getElementById('gmapsStatus').textContent = "โหลด Google Maps ไม่สำเร็จ (เครือข่ายหรือ API Key ผิดรูปแบบ) ตรวจสอบ API Key";
+    document.getElementById('gmapsStatus').className = "status off";
+  };
+  document.head.appendChild(tag);
+}
+
+/* Pull previously-saved customer addresses back from the connected Google Sheet, if any */
+/* Rebuilds a taskItems array from the "type xN; type2 xN2" text stored in the Sheet */
+function parseTaskItemsText(text){
+  if(!text) return [];
+  return text.split(';').map(s=>s.trim()).filter(Boolean).map(part=>{
+    const m = part.match(/^(.*)\sx(\d+)$/);
+    if(m) return { type: m[1].trim(), qty: parseInt(m[2],10) || 1 };
+    return { type: part, qty: 1 };
+  });
+}
+
+/* Pulls every stop back from the connected Sheet (with check-in / bill / issue / reassignment
+   status already merged in by the backend) so work survives a page reload and shows up on any
+   other device that connects to the same Sheet. This replaces the local in-memory list — including
+   the placeholder demo rows — with whatever is actually stored in Google Sheets. */
+/* Fetches stops + customers + sales roster + messenger roster in ONE request instead of four.
+   Used when first connecting to a Sheet (page load / pasting the URL) since that's when the
+   extra round trips are most noticeable, especially on a slower or higher-latency connection. */
+async function loadBootstrapData(){
+  if(!sheetWebAppUrl) return;
+  const statusEl = document.getElementById('sheetStatus');
+  try{
+    const res = await fetch(sheetWebAppUrl + (sheetWebAppUrl.includes('?')?'&':'?') + 'action=bootstrap');
+    const data = await res.json();
+
+    if(data && data.ok === false){
+      statusEl.textContent = "เชื่อมต่อแล้ว แต่เซิร์ฟเวอร์ตอบ error กลับมา: " + (data.error || 'ไม่ทราบสาเหตุ');
+      statusEl.className = "status off";
+      return;
+    }
+
+    if(Array.isArray(data.stops)){
+      stops = data.stops.map(d=>({
+        id: Number(d.id),
+        sortIndex: Number(d.id),
+        messenger: d.messenger || UNASSIGNED,
+        date: d.date,
+        name: d.name,
+        addr: d.addr,
+        taskItems: parseTaskItemsText(d.taskItemsText),
+        category: d.category || 'ลูกค้า',
+        billRef: d.billRef || '',
+        billQty: Number(d.billQty) || 0,
+        billReturnedQty: Number(d.billReturnedQty) || 0,
+        salesName: d.salesName || '',
+        vehicleType: d.vehicleType || 'มอไซ',
+        truckId: d.truckId || '',
+        timePreference: d.timePreference || '',
+        preferredTime: d.preferredTime || '',
+        status: d.status || 'pending',
+        checkinTime: d.checkinTime || null,
+        lat: d.lat ? Number(d.lat) : null,
+        lng: d.lng ? Number(d.lng) : null,
+        photo: null,
+        hasIssue: !!d.hasIssue,
+        issueDesc: d.issueDesc || '',
+        issueSeverity: d.issueSeverity || null,
+        issueRecurring: !!d.issueRecurring
+      }));
+      stops.forEach(s=> rememberCustomer(s.name, s.addr, s.category, true));
+    }
+
+    if(data.customers && typeof data.customers === 'object'){
+      Object.entries(data.customers).forEach(([name, addrs])=>{
+        if(!customerDirectory[name]) customerDirectory[name] = [];
+        (addrs || []).forEach(a=>{
+          const addrText = typeof a === 'string' ? a : a.addr;
+          const cat = typeof a === 'string' ? 'ลูกค้า' : (a.category || 'ลูกค้า');
+          if(!addrText) return;
+          if(!customerDirectory[name].some(x=>x.addr.trim().toLowerCase()===addrText.trim().toLowerCase())){
+            customerDirectory[name].push({ addr: addrText, category: cat });
+          }
+        });
+      });
+    }
+
+    if(Array.isArray(data.sales)){
+      data.sales.forEach(name=>{ if(name && !SALES.includes(name)) SALES.push(name); });
+    }
+    if(Array.isArray(data.messengers)){
+      data.messengers.forEach(name=>{ if(name && !MESSENGERS.includes(name)) MESSENGERS.push(name); });
+    }
+    refreshSalesSelects();
+    refreshMessengerSelects();
+
+    statusEl.textContent = `เชื่อมต่อแล้ว — โหลดข้อมูลจาก Google Sheet สำเร็จ (${stops.length} งาน)`;
+    statusEl.className = "status ok";
+    renderMessenger(); renderSales(); renderAccounting(); renderAdmin();
+  }catch(e){
+    console.error('bootstrap load failed', e);
+    statusEl.textContent = "เชื่อมต่อแล้ว แต่โหลดข้อมูลไม่สำเร็จ: " + e.message + " — ลองกดปุ่ม 🔄 ด้านล่าง หรือรีเฟรชหน้าใหม่";
+    statusEl.className = "status off";
+  }
+}
+
+async function loadStopsFromSheet(){
+  if(!sheetWebAppUrl) return;
+  const statusEl = document.getElementById('sheetStatus');
+  try{
+    const res = await fetch(sheetWebAppUrl + (sheetWebAppUrl.includes('?')?'&':'?') + 'action=allStops');
+    const data = await res.json();
+    if(Array.isArray(data)){
+      stops = data.map(d=>({
+        id: Number(d.id),
+        sortIndex: Number(d.id),
+        messenger: d.messenger || UNASSIGNED,
+        date: d.date,
+        name: d.name,
+        addr: d.addr,
+        taskItems: parseTaskItemsText(d.taskItemsText),
+        category: d.category || 'ลูกค้า',
+        billRef: d.billRef || '',
+        billQty: Number(d.billQty) || 0,
+        billReturnedQty: Number(d.billReturnedQty) || 0,
+        salesName: d.salesName || '',
+        vehicleType: d.vehicleType || 'มอไซ',
+        truckId: d.truckId || '',
+        timePreference: d.timePreference || '',
+        preferredTime: d.preferredTime || '',
+        status: d.status || 'pending',
+        checkinTime: d.checkinTime || null,
+        lat: d.lat ? Number(d.lat) : null,
+        lng: d.lng ? Number(d.lng) : null,
+        photo: null, // photos aren't round-tripped back from the Sheet — only kept for the current session
+        hasIssue: !!d.hasIssue,
+        issueDesc: d.issueDesc || '',
+        issueSeverity: d.issueSeverity || null,
+        issueRecurring: !!d.issueRecurring
+      }));
+      // keep the customer-name autosuggest in sync with whatever history just came back, without re-writing it to the Sheet
+      stops.forEach(s=> rememberCustomer(s.name, s.addr, s.category, true));
+      statusEl.textContent = `เชื่อมต่อแล้ว — โหลดงานจาก Google Sheet แล้ว ${stops.length} งาน`;
+      statusEl.className = "status ok";
+      renderMessenger(); renderSales(); renderAccounting(); renderAdmin();
+    } else {
+      // The server responded successfully but didn't send back the expected array —
+      // show exactly what it sent instead of silently leaving old status text on screen.
+      const errText = (data && data.error) ? data.error : JSON.stringify(data).slice(0, 200);
+      statusEl.textContent = "เชื่อมต่อแล้ว แต่ข้อมูลที่ได้กลับมาไม่ใช่รูปแบบที่คาดไว้ — ข้อความจากเซิร์ฟเวอร์: " + errText;
+      statusEl.className = "status off";
+    }
+  }catch(e){
+    console.error('load stops failed', e);
+    statusEl.textContent = "เชื่อมต่อแล้ว แต่โหลดข้อมูลงานจาก Sheet ไม่สำเร็จ: " + e.message + " — ลองกดปุ่ม 🔄 ด้านล่าง หรือรีเฟรชหน้าใหม่";
+    statusEl.className = "status off";
+  }
+}
+
+async function loadCustomersFromSheet(){
+  if(!sheetWebAppUrl) return { ok:false };
+  try{
+    const res = await fetch(sheetWebAppUrl + (sheetWebAppUrl.includes('?')?'&':'?') + 'action=customers');
+    const data = await res.json();
+    let newNames = 0, newAddrs = 0;
+    if(data && typeof data === 'object'){
+      Object.entries(data).forEach(([name, addrs])=>{
+        if(!customerDirectory[name]){ customerDirectory[name] = []; newNames++; }
+        (addrs || []).forEach(a=>{
+          const addrText = typeof a === 'string' ? a : a.addr;
+          const cat = typeof a === 'string' ? 'ลูกค้า' : (a.category || 'ลูกค้า');
+          if(!addrText) return;
+          if(!customerDirectory[name].some(x=>x.addr.trim().toLowerCase()===addrText.trim().toLowerCase())){
+            customerDirectory[name].push({ addr: addrText, category: cat });
+            newAddrs++;
+          }
+        });
+      });
+    }
+    return { ok:true, totalCustomers: Object.keys(customerDirectory).length, newAddrs };
+  }catch(e){
+    console.error('load customers failed', e);
+    return { ok:false };
+  }
+}
+async function manualRefreshStops(){
+  if(!sheetWebAppUrl){
+    alert("ยังไม่ได้ใส่ Google Apps Script URL ด้านบน — ใส่ก่อนแล้วค่อยกดดึงข้อมูล");
+    return;
+  }
+  await loadStopsFromSheet(); // this already updates #sheetStatus and re-renders every tab
+}
+async function manualRefreshCustomers(){
+  const el = document.getElementById('customerSyncStatus');
+  if(!sheetWebAppUrl){
+    el.textContent = "ยังไม่ได้ใส่ Google Apps Script URL ด้านบน — ใส่ก่อนแล้วค่อยกดดึงข้อมูล";
+    el.className = "status off";
+    return;
+  }
+  el.textContent = "กำลังดึงข้อมูล...";
+  el.className = "status off";
+  const result = await loadCustomersFromSheet();
+  if(result.ok){
+    el.textContent = `ดึงข้อมูลสำเร็จ — มีลูกค้า/ซัพพลายเออร์ทั้งหมด ${result.totalCustomers} ราย ในระบบตอนนี้`;
+    el.className = "status ok";
+  } else {
+    el.textContent = "ดึงข้อมูลไม่สำเร็จ ตรวจสอบ URL และการตั้งค่าการเข้าถึงของ Apps Script";
+    el.className = "status off";
+  }
+}
+
+
+/* ---------- CHECK-IN ---------- */
+let checkinTarget = null;
+let checkinPhotoRaw = null; // untouched capture from the camera
+let checkinPhoto = null;    // final version with the location/time stamp burned in, this is what gets saved
+let checkinGeo = null;
+
+function openCheckin(id){
+  checkinTarget = stops.find(s=>s.id===id);
+  checkinPhotoRaw = null; checkinPhoto = null; checkinGeo = null;
+  document.getElementById('checkinName').textContent = checkinTarget.name;
+  document.getElementById('photoBox').innerHTML = "📷 แตะเพื่อถ่ายรูป";
+  document.getElementById('geoLine').textContent = "📍 กำลังระบุตำแหน่ง...";
+  document.getElementById('geoLine').className = "geoLine";
+  document.getElementById('timeLine').textContent = "";
+  document.getElementById('confirmCheckinBtn').disabled = true;
+  openModal('checkinModal');
+
+  // Browsers refuse GPS access if this page isn't the actual top-level tab on a secure origin —
+  // that includes being shown inside any preview iframe, even one hosted on an https:// site.
+  const geoCheck = geoWillBeBlocked();
+  if(geoCheck.blocked){
+    document.getElementById('geoLine').textContent = geoCheck.inIframe
+      ? "📍 หน้านี้กำลังแสดงผ่านหน้าต่างตัวอย่าง (preview) ซึ่งเบราว์เซอร์บล็อกการขอตำแหน่งเสมอ ต้องดาวน์โหลดไฟล์ .html แล้วเปิดผ่านลิงก์เว็บโฮสติ้งของตัวเองโดยตรง (ดูวิธีในแบนเนอร์ด้านบนของหน้าแอป)"
+      : "📍 เบราว์เซอร์บล็อกการขอตำแหน่ง เพราะเปิดไฟล์นี้แบบ " + location.protocol + " (ไม่ใช่ HTTPS) — ต้องอัปโหลดขึ้นเว็บโฮสติ้งก่อนถึงจะขอ GPS ได้ ดูวิธีด้านล่างของแอป";
+    document.getElementById('geoLine').className = "geoLine";
+    updateConfirmState();
+    return;
+  }
+
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      checkinGeo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      document.getElementById('geoLine').textContent = `📍 ${checkinGeo.lat.toFixed(5)}, ${checkinGeo.lng.toFixed(5)}`;
+      document.getElementById('geoLine').className = "geoLine ok";
+      stampAndPreview(); // redraw the stamp on the photo now that we have a location
+      updateConfirmState();
+    }, err=>{
+      const reasons = {
+        1: "แอปนี้ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง (Permission denied) — เช็คไอคอน 🔒 หน้า URL หรือ Settings > Safari > Location",
+        2: "อุปกรณ์หาตำแหน่งไม่ได้ตอนนี้ (Position unavailable) — ลองไปที่โล่งกว่านี้",
+        3: "หาตำแหน่งไม่ทันเวลา (Timeout) — ลองกดเช็คอินใหม่อีกครั้ง"
+      };
+      document.getElementById('geoLine').textContent = "📍 " + (reasons[err.code] || "ไม่สามารถระบุตำแหน่งได้") + " (ยังเช็คอินต่อได้ แต่รูปจะไม่มีพิกัด)";
+      document.getElementById('geoLine').className = "geoLine";
+      stampAndPreview();
+      updateConfirmState();
+    }, { timeout: 8000, enableHighAccuracy: true });
+  } else {
+    document.getElementById('geoLine').textContent = "📍 เบราว์เซอร์นี้ไม่รองรับ GPS";
+    updateConfirmState();
+  }
+  const now = new Date();
+  document.getElementById('timeLine').textContent = "🕒 " + now.toLocaleString('th-TH');
+}
+
+function onPhotoSelected(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    checkinPhotoRaw = e.target.result;
+    stampAndPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+/* Burns the customer name, address, timestamp and GPS coordinates directly onto the photo,
+   so the proof-of-visit travels with the image itself and shows up later wherever the photo is viewed. */
+function stampAndPreview(){
+  if(!checkinPhotoRaw) return;
+  const img = new Image();
+  img.onload = ()=>{
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const barHeight = Math.max(76, Math.round(canvas.height * 0.16));
+    ctx.fillStyle = 'rgba(0,0,0,0.58)';
+    ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+
+    const pad = Math.round(canvas.width * 0.035);
+    const maxWidth = canvas.width - pad * 2;
+    const nameSize = Math.max(15, Math.round(canvas.width * 0.034));
+    const subSize = Math.round(nameSize * 0.8);
+    let y = canvas.height - barHeight + pad * 0.5;
+
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#fff';
+    ctx.font = `600 ${nameSize}px sans-serif`;
+    ctx.fillText(truncateCanvasText(ctx, checkinTarget ? checkinTarget.name : '', maxWidth), pad, y);
+    y += nameSize * 1.3;
+
+    ctx.font = `400 ${subSize}px sans-serif`;
+    const addrLine = checkinTarget ? (isMapLink(checkinTarget.addr) ? '🔗 บันทึกตำแหน่งจากลิงก์ Google Maps' : checkinTarget.addr) : '';
+    ctx.fillText(truncateCanvasText(ctx, addrLine, maxWidth), pad, y);
+    y += subSize * 1.4;
+
+    const now = new Date();
+    const timeStr = now.toLocaleString('th-TH');
+    const geoStr = checkinGeo ? `📍 ${checkinGeo.lat.toFixed(5)}, ${checkinGeo.lng.toFixed(5)}` : '📍 ไม่พบตำแหน่ง GPS';
+    ctx.fillText(truncateCanvasText(ctx, `${timeStr}    ${geoStr}`, maxWidth), pad, y);
+
+    checkinPhoto = canvas.toDataURL('image/jpeg', 0.85);
+    document.getElementById('photoBox').innerHTML = `<img src="${checkinPhoto}"><div>ถ่ายใหม่</div>`;
+    updateConfirmState();
+  };
+  img.src = checkinPhotoRaw;
+}
+function truncateCanvasText(ctx, text, maxWidth){
+  text = text || '';
+  if(ctx.measureText(text).width <= maxWidth) return text;
+  let t = text;
+  while(t.length>0 && ctx.measureText(t+'…').width > maxWidth){ t = t.slice(0,-1); }
+  return t + '…';
+}
+
+function updateConfirmState(){
+  document.getElementById('confirmCheckinBtn').disabled = !checkinPhoto;
+}
+
+function confirmCheckin(){
+  if(!checkinTarget) return;
+  const now = new Date();
+  checkinTarget.status = 'done';
+  checkinTarget.checkinTime = now.toLocaleString('th-TH');
+  checkinTarget.photo = checkinPhoto;
+  if(checkinGeo){ checkinTarget.lat = checkinGeo.lat; checkinTarget.lng = checkinGeo.lng; }
+  syncToSheet('checkin', {
+    id: checkinTarget.id, messenger: checkinTarget.messenger, date: checkinTarget.date,
+    name: checkinTarget.name, taskItemsText: (checkinTarget.taskItems||[]).map(t=>`${t.type} x${t.qty}`).join('; '), billRef: checkinTarget.billRef,
+    time: checkinTarget.checkinTime, lat: checkinTarget.lat, lng: checkinTarget.lng
+  });
+  closeModal('checkinModal');
+  renderMessenger();
+}
+
+function openPhotoViewer(id){
+  const s = stops.find(x=>x.id===id);
+  if(!s || !s.photo) return;
+  document.getElementById('photoViewImg').src = s.photo;
+  openModal('photoViewModal');
+}
+
+/* ---------- ISSUE LOGGING ---------- */
+let issueTarget = null;
+function openIssueModal(id){
+  issueTarget = stops.find(s=>s.id===id);
+  if(!issueTarget) return;
+  document.getElementById('issueName').textContent = issueTarget.name;
+  document.getElementById('i_desc').value = issueTarget.issueDesc || '';
+
+  // count past issues logged for this same customer name, excluding this stop
+  const pastIssues = stops.filter(s=>s.name===issueTarget.name && s.id!==issueTarget.id && s.hasIssue);
+  const hintEl = document.getElementById('issueHistoryHint');
+  hintEl.textContent = pastIssues.length>0
+    ? `⚠ ลูกค้ารายนี้เคยมีการบันทึกปัญหามาก่อน ${pastIssues.length} ครั้ง`
+    : 'ยังไม่เคยมีการบันทึกปัญหาของลูกค้ารายนี้มาก่อน';
+
+  const severity = issueTarget.issueSeverity || 'กลาง';
+  document.querySelectorAll('#i_severityGroup label').forEach(l=>{
+    const on = l.dataset.val === severity;
+    l.classList.toggle('active', on);
+    l.querySelector('input').checked = on;
+  });
+  const recurring = issueTarget.hasIssue ? issueTarget.issueRecurring : (pastIssues.length>0);
+  document.querySelectorAll('#i_recurGroup label').forEach(l=>{
+    const on = (l.dataset.val === 'yes') === recurring;
+    l.classList.toggle('active', on);
+    l.querySelector('input').checked = on;
+  });
+
+  document.getElementById('removeIssueBtn').style.display = issueTarget.hasIssue ? 'inline-block' : 'none';
+  openModal('issueModal');
+}
+function selectSeverity(label){
+  document.querySelectorAll('#i_severityGroup label').forEach(l=>l.classList.remove('active'));
+  label.classList.add('active');
+  label.querySelector('input').checked = true;
+}
+function selectRecur(label){
+  document.querySelectorAll('#i_recurGroup label').forEach(l=>l.classList.remove('active'));
+  label.classList.add('active');
+  label.querySelector('input').checked = true;
+}
+function submitIssue(){
+  if(!issueTarget) return;
+  const desc = document.getElementById('i_desc').value.trim();
+  if(!desc){ alert("กรุณากรอกรายละเอียดปัญหา"); return; }
+  const severity = document.querySelector('#i_severityGroup input[name=i_severity]:checked').value;
+  const recurring = document.querySelector('#i_recurGroup input[name=i_recur]:checked').value === 'yes';
+  issueTarget.hasIssue = true;
+  issueTarget.issueDesc = desc;
+  issueTarget.issueSeverity = severity;
+  issueTarget.issueRecurring = recurring;
+  syncToSheet('issue', {
+    id: issueTarget.id, messenger: issueTarget.messenger, date: issueTarget.date,
+    name: issueTarget.name, addr: issueTarget.addr, severity, recurring: recurring ? 'YES' : 'NO', desc
+  });
+  closeModal('issueModal');
+  renderMessenger();
+}
+function removeIssue(){
+  if(!issueTarget) return;
+  issueTarget.hasIssue = false;
+  issueTarget.issueDesc = '';
+  issueTarget.issueSeverity = null;
+  issueTarget.issueRecurring = false;
+  closeModal('issueModal');
+  renderMessenger();
+}
+
+/* ---------- SALES VIEW ---------- */
+function addSalesName(){
+  const input = document.getElementById('salesNewName');
+  const name = input.value.trim();
+  if(!name){ alert("พิมพ์ชื่อเซลส์ก่อนนะครับ"); return; }
+  if(SALES.includes(name)){ alert("มีชื่อนี้อยู่แล้ว"); input.value=""; return; }
+  SALES.push(name);
+  syncToSheet('addSales', { name });
+  input.value = "";
+  refreshSalesSelects();
+  document.getElementById('salesSelect').value = name;
+  renderSales();
+}
+function removeSalesName(){
+  const sel = document.getElementById('salesSelect');
+  const name = sel.value;
+  if(!name){ return; }
+  if(!confirm(`ลบชื่อเซลส์ "${name}" ออกจากรายชื่อใช่ไหม? (งานที่เคยแจ้งไว้จะยังอยู่ในระบบ ไม่หาย)`)) return;
+  SALES = SALES.filter(n=>n!==name);
+  syncToSheet('removeSales', { name });
+  refreshSalesSelects();
+  renderSales();
+}
+async function loadSalesFromSheet(){
+  if(!sheetWebAppUrl) return;
+  try{
+    const res = await fetch(sheetWebAppUrl + (sheetWebAppUrl.includes('?')?'&':'?') + 'action=salesRoster');
+    const data = await res.json();
+    if(Array.isArray(data) && data.length>0){
+      data.forEach(name=>{ if(name && !SALES.includes(name)) SALES.push(name); });
+      refreshSalesSelects();
+      renderSales();
+    }
+  }catch(e){ console.error('load sales roster failed', e); }
+}
+function renderSales(){
+  const salesName = document.getElementById('salesSelect').value;
+  const statusFilter = document.getElementById('salesStatusFilter').value;
+  const dateFilter = document.getElementById('salesDateFilter').value;
+  let mine = stops.filter(s=>s.salesName===salesName);
+
+  const totalStops = mine.length;
+  const unassignedCount = mine.filter(s=>s.messenger===UNASSIGNED).length;
+  const assignedCount = mine.filter(s=>s.messenger!==UNASSIGNED && s.status!=='done').length;
+  const doneCount = mine.filter(s=>s.status==='done').length;
+
+  document.getElementById('salesSummary').innerHTML = `
+    <div class="kpi"><div class="num">${totalStops}</div><div class="lbl">งานที่แจ้งทั้งหมด</div></div>
+    <div class="kpi"><div class="num" style="color:var(--red)">${unassignedCount}</div><div class="lbl">ยังไม่มอบหมาย</div></div>
+    <div class="kpi"><div class="num" style="color:var(--amber-deep)">${assignedCount}</div><div class="lbl">มอบหมายแล้ว กำลังวิ่ง</div></div>
+    <div class="kpi"><div class="num" style="color:var(--teal)">${doneCount}</div><div class="lbl">เช็คอินแล้ว</div></div>
+  `;
+
+  document.getElementById('salesListHeading').textContent = dateFilter
+    ? `งานที่แจ้งไว้ (เฉพาะวันที่ ${dateFilter})`
+    : "งานที่แจ้งไว้ (ทุกวันที่)";
+
+  let list = mine.slice().sort((a,b)=> (a.date < b.date ? 1 : -1));
+  if(dateFilter) list = list.filter(s=>s.date===dateFilter);
+  if(statusFilter==='unassigned') list = list.filter(s=>s.messenger===UNASSIGNED);
+  if(statusFilter==='assigned') list = list.filter(s=>s.messenger!==UNASSIGNED && s.status!=='done');
+  if(statusFilter==='done') list = list.filter(s=>s.status==='done');
+
+  document.getElementById('salesTable').innerHTML = list.map(s=>{
+    const responsible = s.messenger===UNASSIGNED ? '📥 ยังไม่มอบหมาย' : s.messenger;
+    const statusPill = s.status==='done'
+      ? `<span class="statusPill back">เช็คอินแล้ว</span>`
+      : (s.messenger===UNASSIGNED ? `<span class="statusPill wait">ยังไม่มอบหมาย</span>` : `<span class="badge type">กำลังวิ่ง</span>`);
+    const vehicleLabel = s.vehicleType==='กระบะ' ? `🚚 ${s.truckId||'กระบะ'}` : '🏍️ มอไซ';
+    const timeLabel = s.timePreference ? (s.timePreference==='ระบุเวลา' && s.preferredTime ? s.preferredTime : s.timePreference) : '-';
+    return `
+    <tr>
+      <td class="mono">${s.date}</td>
+      <td>${escapeHtml(s.name)}<br><span style="color:var(--slate);font-size:11.5px;">${s.category||'ลูกค้า'}</span></td>
+      <td>${(s.taskItems||[]).map(t=>`${escapeHtml(t.type)}${t.qty>1?' ×'+t.qty:''}`).join(', ')}</td>
+      <td>${vehicleLabel}</td>
+      <td>${timeLabel}</td>
+      <td>${responsible}</td>
+      <td>${statusPill}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:30px;">ไม่มีงานที่ตรงกับตัวกรองนี้</td></tr>`;
+}
+function clearSalesDateFilter(){
+  document.getElementById('salesDateFilter').value = "";
+  renderSales();
+}
+
+/* ---------- ACCOUNTING VIEW ---------- */
+function renderAccounting(){
+  const personFilter = document.getElementById('acctPersonFilter').value;
+  const statusFilter = document.getElementById('acctStatusFilter').value;
+  let list = stops.filter(s=>s.billQty>0);
+  if(personFilter && personFilter!=='all') list = list.filter(s=>s.messenger===personFilter);
+  if(statusFilter==='wait') list = list.filter(s=>(s.billReturnedQty||0) < s.billQty);
+  if(statusFilter==='back') list = list.filter(s=>(s.billReturnedQty||0) >= s.billQty);
+
+  const allBillStops = stops.filter(s=>s.billQty>0);
+  const totalQty = allBillStops.reduce((sum,s)=>sum+s.billQty,0);
+  const returnedQty = allBillStops.reduce((sum,s)=>sum+Math.min(s.billReturnedQty||0, s.billQty),0);
+  const waitingQty = totalQty - returnedQty;
+
+  document.getElementById('acctSummary').innerHTML = `
+    <div class="kpi"><div class="num">${totalQty}</div><div class="lbl">บิล/เช็คทั้งหมด</div></div>
+    <div class="kpi"><div class="num" style="color:var(--teal)">${returnedQty}</div><div class="lbl">กลับมาแล้ว</div></div>
+    <div class="kpi"><div class="num" style="color:var(--red)">${waitingQty}</div><div class="lbl">ยังรอกลับ</div></div>
+  `;
+
+  document.getElementById('acctTable').innerHTML = list.map(s=>{
+    const returned = Math.min(s.billReturnedQty||0, s.billQty);
+    const complete = returned >= s.billQty;
+    return `
+    <tr>
+      <td class="mono">${s.date}</td>
+      <td>${s.messenger}</td>
+      <td>${escapeHtml(s.name)}<br><span style="color:var(--slate);font-size:11.5px;">${s.category||'ลูกค้า'}</span></td>
+      <td>${(s.taskItems||[]).map(t=>`${escapeHtml(t.type)}${t.qty>1?' ×'+t.qty:''}`).join(', ')}</td>
+      <td class="mono">${escapeHtml(s.billRef||'-')}</td>
+      <td class="mono">${s.billQty}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn small ghost" onclick="adjustBillReturn(${s.id},-1)">−</button>
+          <span class="mono">${returned}/${s.billQty}</span>
+          <button class="btn small ghost" onclick="adjustBillReturn(${s.id},1)">+</button>
+        </div>
+      </td>
+      <td><span class="statusPill ${complete?'back':'wait'}">${complete?'ครบแล้ว':'รออีก '+(s.billQty-returned)+' ใบ'}</span></td>
+    </tr>
+  `;}).join("") || `<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:30px;">ไม่มีรายการ</td></tr>`;
+}
+function adjustBillReturn(id, delta){
+  const s = stops.find(x=>x.id===id);
+  if(!s) return;
+  const next = Math.max(0, Math.min(s.billQty, (s.billReturnedQty||0) + delta));
+  s.billReturnedQty = next;
+  syncToSheet('billStatus', { id: s.id, billRef: s.billRef, billQty: s.billQty, billReturnedQty: next });
+  renderAccounting();
+}
+
+/* ---------- ADMIN VIEW ---------- */
+function renderAdmin(){
+  const person = document.getElementById('admPerson').value;
+  const month = document.getElementById('admMonth').value;
+  const year = document.getElementById('admYear').value;
+
+  let list = stops.slice();
+  if(person && person!=='all') list = list.filter(s=>s.messenger===person);
+  if(month && month!=='all') list = list.filter(s=> (new Date(s.date).getMonth()+1) == Number(month));
+  if(year && year!=='all') list = list.filter(s=> new Date(s.date).getFullYear() == Number(year));
+
+  const totalStops = list.length;
+  const activePeople = new Set(list.map(s=>s.messenger)).size;
+  const totalBills = list.reduce((sum,s)=>sum+(s.billQty||0),0);
+  const perPerson = {};
+  MESSENGERS.forEach(m=>perPerson[m] = {stops:0, bills:0, back:0, days:new Set(), issues:0});
+  list.forEach(s=>{
+    perPerson[s.messenger].stops++;
+    perPerson[s.messenger].days.add(s.date);
+    if(s.billQty>0){ perPerson[s.messenger].bills += s.billQty; perPerson[s.messenger].back += Math.min(s.billReturnedQty||0, s.billQty); }
+    if(s.hasIssue) perPerson[s.messenger].issues++;
+  });
+  let topPerson = "-", topVal = -1;
+  Object.entries(perPerson).forEach(([m,v])=>{ if(v.stops>topVal){ topVal=v.stops; topPerson=m; } });
+
+  const issueStops = list.filter(s=>s.hasIssue);
+  const totalIssues = issueStops.length;
+  const issueRate = totalStops ? Math.round((totalIssues/totalStops)*100) : 0;
+
+  document.getElementById('admSummary').innerHTML = `
+    <div class="kpi"><div class="num">${totalStops}</div><div class="lbl">งานทั้งหมด</div></div>
+    <div class="kpi"><div class="num">${activePeople}</div><div class="lbl">เมสเซนเจอร์ที่วิ่งงาน</div></div>
+    <div class="kpi"><div class="num">${totalBills}</div><div class="lbl">บิลที่เกี่ยวข้อง</div></div>
+    <div class="kpi"><div class="num" style="color:${totalIssues>0?'var(--red)':'inherit'}">${totalIssues}</div><div class="lbl">งานที่มีปัญหา (${issueRate}%)</div></div>
+    <div class="kpi"><div class="num">${topVal>0?topPerson:'-'}</div><div class="lbl">รับงานมากที่สุด</div></div>
+  `;
+
+  const maxStops = Math.max(1, ...MESSENGERS.map(m=>perPerson[m].stops));
+  document.getElementById('admChart').innerHTML = MESSENGERS.map(m=>{
+    const v = perPerson[m].stops;
+    const pct = Math.round((v/maxStops)*100);
+    return `<div class="barRow">
+      <div>${m}</div>
+      <div class="barTrack"><div class="barFill" style="width:${pct}%"></div></div>
+      <div class="val">${v}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById('admTable').innerHTML = MESSENGERS.map(m=>{
+    const v = perPerson[m];
+    const pct = v.bills ? Math.round((v.back/v.bills)*100) : 0;
+    return `<tr>
+      <td>${m}</td>
+      <td>${v.days.size}</td>
+      <td>${v.stops}</td>
+      <td>${v.bills}</td>
+      <td>${v.back}</td>
+      <td>${v.bills? pct+'%' : '-'}</td>
+      <td>${v.issues>0?`<span class="badge issue-high">${v.issues}</span>`:'-'}</td>
+    </tr>`;
+  }).join("");
+
+  // ---- issue breakdown by severity ----
+  const sevCounts = { 'มาก':0, 'กลาง':0, 'น้อย':0 };
+  issueStops.forEach(s=>{ if(sevCounts[s.issueSeverity]!==undefined) sevCounts[s.issueSeverity]++; });
+  const recurCount = issueStops.filter(s=>s.issueRecurring).length;
+
+  document.getElementById('admIssueSummary').innerHTML = `
+    <div class="kpi"><div class="num" style="color:var(--red)">${sevCounts['มาก']}</div><div class="lbl">ปัญหาระดับมาก</div></div>
+    <div class="kpi"><div class="num" style="color:var(--amber-deep)">${sevCounts['กลาง']}</div><div class="lbl">ปัญหาระดับกลาง</div></div>
+    <div class="kpi"><div class="num">${sevCounts['น้อย']}</div><div class="lbl">ปัญหาระดับน้อย</div></div>
+    <div class="kpi"><div class="num" style="color:var(--red)">${recurCount}</div><div class="lbl">ปัญหาที่เกิดซ้ำ</div></div>
+  `;
+
+  const maxSev = Math.max(1, sevCounts['มาก'], sevCounts['กลาง'], sevCounts['น้อย']);
+  document.getElementById('admIssueChart').innerHTML = ['มาก','กลาง','น้อย'].map(lvl=>{
+    const v = sevCounts[lvl];
+    const pct = Math.round((v/maxSev)*100);
+    return `<div class="barRow">
+      <div>${lvl}</div>
+      <div class="barTrack"><div class="barFill" style="width:${pct}%;background:${lvl==='มาก'?'var(--red)':lvl==='กลาง'?'var(--amber)':'#C7CBD4'}"></div></div>
+      <div class="val">${v}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById('admIssueTable').innerHTML = issueStops
+    .sort((a,b)=> (a.date < b.date ? 1 : -1))
+    .map(s=>`
+    <tr>
+      <td class="mono">${s.date}</td>
+      <td>${s.messenger}</td>
+      <td>${escapeHtml(s.name)}<br><span style="color:var(--slate);font-size:11.5px;">${isMapLink(s.addr) ? '🔗 ลิงก์ Google Maps' : escapeHtml(s.addr)}</span></td>
+      <td><span class="badge issue-${s.issueSeverity==='มาก'?'high':s.issueSeverity==='กลาง'?'med':'low'}">${s.issueSeverity}</span></td>
+      <td>${s.issueRecurring?`<span class="badge issue-recur">↻ เกิดซ้ำ</span>`:'-'}</td>
+      <td>${escapeHtml(s.issueDesc)}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--slate);padding:24px;">ไม่มีปัญหาที่บันทึกไว้ในช่วงนี้</td></tr>`;
+}
+
+/* ---------- UTIL ---------- */
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function escapeHtml(str){
+  if(!str) return "";
+  return str.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ---------- INITIAL RENDER ---------- */
+(function(){
+  const check = geoWillBeBlocked();
+  if(check.blocked){
+    document.getElementById('insecureReasonText').textContent = check.inIframe
+      ? "หน้านี้กำลังแสดงผ่านหน้าต่างตัวอย่าง (preview/iframe) ซึ่งเบราว์เซอร์บล็อกการขอตำแหน่งเสมอ แม้เว็บไซต์หลักจะเป็น HTTPS ก็ตาม"
+      : "หน้านี้เปิดแบบ " + location.protocol + "// ไม่ใช่ HTTPS ซึ่งเบราว์เซอร์บล็อกการขอตำแหน่งเสมอ ไม่ว่าจะเปิด Location Services ในเครื่องหรือไม่ก็ตาม";
+    document.getElementById('insecureBanner').style.display = 'block';
+  }
+})();
+
+// Restore previously-saved settings so they don't need to be re-typed after every page reload.
+(function restoreSavedSettings(){
+  try{
+    const savedSheetUrl = localStorage.getItem('futai_sheetUrl');
+    if(savedSheetUrl){
+      document.getElementById('sheetUrl').value = savedSheetUrl;
+      onSheetUrlChange();
+    }
+    const savedGmapsKey = localStorage.getItem('futai_gmapsKey');
+    if(savedGmapsKey){
+      document.getElementById('gmapsKey').value = savedGmapsKey;
+      onGmapsKeyChange();
+    }
+  }catch(e){ console.error('restore settings failed', e); }
+})();
+
+renderMessenger();
+renderSales();
+renderAccounting();
+renderAdmin();
+</script>
+</body>
+</html>

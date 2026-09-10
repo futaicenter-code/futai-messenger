@@ -112,6 +112,13 @@
     display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);
     border:1px solid var(--line);border-radius:10px;padding:10px 14px;
   }
+  .bulkBarRow1{display:flex;align-items:center;gap:12px;}
+  .bulkBarRow2{display:flex;align-items:center;gap:8px;}
+  /* On mobile the bulkBar becomes a fixed bottom bar (see @media block) so the messenger picker
+     stays within thumb's reach no matter how far down the pool card list you've scrolled — this
+     spacer reserves the room for it in normal flow so the last cards aren't hidden underneath.
+     Its height is set from JS (see renderMessenger's isPool branch) to match the bar's real height. */
+  .poolBottomBarSpacer{display:none;}
   .stopCard{
     background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
     display:flex;justify-content:space-between;gap:12px;align-items:flex-start;
@@ -383,6 +390,20 @@
     .poolProvinceArea{flex-direction:column;overflow-x:visible;}
     .provinceGroup{flex:1 1 auto;max-height:none;}
     .provinceGroupBody{overflow-y:visible;}
+
+    /* Pin the "select → assign to" bar to the bottom of the screen so it's always in reach —
+       without this, picking a messenger meant scrolling all the way back up past however many
+       pool cards you'd already scrolled through, every single time. */
+    .bulkBar{
+      position:fixed;left:0;right:0;bottom:0;z-index:22;
+      flex-direction:column;align-items:stretch;gap:8px;
+      border-radius:0;border-left:none;border-right:none;border-bottom:none;
+      box-shadow:0 -4px 14px rgba(27,36,48,0.14);
+      padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)) 14px;
+    }
+    .bulkBarRow1{justify-content:space-between;}
+    .bulkBarRow2 select{flex:1;min-width:0;}
+    .poolBottomBarSpacer{display:block;}
   }
 </style>
 </head>
@@ -1338,6 +1359,7 @@ function renderMessenger(){
     // The pool ("ส่วนกลาง") gets its own board layout instead of one long scroll of full-detail
     // cards — see renderPoolBoard() for the province-grouped, drag-to-assign redesign.
     container.innerHTML = poolCategoryBar + renderPoolBoard(list, d);
+    sizePoolBottomBarSpacer();
     return;
   }
 
@@ -1572,20 +1594,42 @@ function bulkAssign(){
    spot clusters of nearby work and drag a card straight onto whoever should take it. Checkbox
    multi-select + the existing bulk-assign dropdown stay available too, since HTML5 drag-and-drop
    doesn't work on touchscreens and this app runs on phones in the field. */
+// On mobile the bulkBar is pinned to the bottom of the screen (position:fixed) so picking a
+// messenger to assign to never requires scrolling back up through the pool's card list. That
+// takes it out of normal document flow, so a spacer div reserves the same amount of room right
+// where the bar used to sit, sized from its real rendered height (it can wrap to more than one
+// line on very narrow phones) rather than a guessed constant.
+function sizePoolBottomBarSpacer(){
+  requestAnimationFrame(()=>{
+    const bar = document.querySelector('.bulkBar');
+    const spacer = document.querySelector('.poolBottomBarSpacer');
+    if(bar && spacer) spacer.style.height = bar.offsetHeight + 'px';
+  });
+}
+
 function renderPoolBoard(list, d){
+  // Two explicit rows (rather than one flat flex-wrap row) so the mobile version — a fixed bar
+  // pinned to the bottom of the screen, see the @media block — lays out predictably as
+  // "select-all + count" on top and "pick messenger + assign" below, instead of an unpredictable
+  // wrap. Desktop still reads as one bar since both rows are flex rows themselves.
   const bulkBar = list.length>0 ? `
     <div class="bulkBar">
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
-        <input type="checkbox" id="selectAllUnassigned" onchange="toggleSelectAll(this.checked)" ${list.every(s=>selectedForAssign.has(s.id))?'checked':''}>
-        เลือกทั้งหมด
-      </label>
-      <span class="fieldHint" style="margin:0;">เลือกแล้ว ${selectedForAssign.size} ที่</span>
-      <select id="bulkAssignSelect" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line);">
-        <option value="">มอบหมายที่เลือกให้...</option>
-        ${MESSENGERS.map(name=>`<option value="${name}">${name}</option>`).join('')}
-      </select>
-      <button class="btn small primary" onclick="bulkAssign()">มอบหมาย</button>
+      <div class="bulkBarRow1">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="selectAllUnassigned" onchange="toggleSelectAll(this.checked)" ${list.every(s=>selectedForAssign.has(s.id))?'checked':''}>
+          เลือกทั้งหมด
+        </label>
+        <span class="fieldHint" style="margin:0;">เลือกแล้ว ${selectedForAssign.size} ที่</span>
+      </div>
+      <div class="bulkBarRow2">
+        <select id="bulkAssignSelect" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line);">
+          <option value="">มอบหมายที่เลือกให้...</option>
+          ${MESSENGERS.map(name=>`<option value="${name}">${name}</option>`).join('')}
+        </select>
+        <button class="btn small primary" onclick="bulkAssign()">มอบหมาย</button>
+      </div>
     </div>
+    <div class="poolBottomBarSpacer"></div>
   ` : '';
 
   const hint = `<div class="fieldHint" style="margin:10px 0;">ลากชื่อลูกค้า/ซัพพลายเออร์ไปวางบนชื่อแมสด้านซ้ายเพื่อมอบหมายทันที (มือถือ: ติ๊กเลือก แล้วมอบหมายจากแถบด้านบนแทน) — แต่ละคอลัมคือ 1 จังหวัด กดชื่อเพื่อดู/แก้รายละเอียดเต็ม</div>`;

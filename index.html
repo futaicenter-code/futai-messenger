@@ -309,9 +309,23 @@
   footer.note{max-width:960px;margin:0 auto;padding:0 16px 40px 16px;font-size:11.5px;color:var(--slate);}
   footer.note b{color:var(--ink-soft);}
 
+  .feedList{display:flex;flex-direction:column;gap:10px;}
+  .feedItem{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+  .feedDot{width:10px;height:10px;border-radius:50%;background:var(--teal);margin-top:5px;flex-shrink:0;box-shadow:0 0 0 3px var(--teal-soft);}
+  @keyframes feedPulse{0%{box-shadow:0 0 0 0 rgba(30,158,113,0.35);}70%{box-shadow:0 0 0 7px rgba(30,158,113,0);}100%{box-shadow:0 0 0 0 rgba(30,158,113,0);}}
+  .feedItem:first-child .feedDot{animation:feedPulse 2s ease-out infinite;}
+  .feedBody{flex:1;min-width:0;}
+  .feedLine{font-size:14px;line-height:1.5;}
+  .feedMeta{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+  .feedMeta:empty{display:none;}
+  .feedTime{font-family:'IBM Plex Mono';font-size:12px;color:var(--slate);text-align:right;white-space:nowrap;}
+  .feedRelative{font-size:10.5px;color:var(--teal);margin-top:2px;}
+
   @media (max-width:560px){
     .stopCard{flex-direction:column;}
     .stopCard .actions{flex-direction:row;width:100%;justify-content:flex-end;}
+    .feedItem{flex-direction:column;}
+    .feedTime{text-align:left;display:flex;gap:6px;align-items:baseline;}
   }
 </style>
 </head>
@@ -332,6 +346,7 @@
     <button class="active" data-tab="messenger" onclick="switchTab('messenger')">🏍️ แมส</button>
     <button data-tab="trucks" onclick="switchTab('trucks')">🚚 คิวรถกระบะ</button>
     <button data-tab="sales" onclick="switchTab('sales')">💼 เซลส์</button>
+    <button data-tab="feed" onclick="switchTab('feed')">📋 ฟีด</button>
     <button data-tab="accounting" onclick="switchTab('accounting')">🧾 บัญชี</button>
     <button data-tab="admin" onclick="switchTab('admin')">📊 ผู้บริหาร</button>
     <button data-tab="search" onclick="switchTab('search')">🔍 ค้นหา</button>
@@ -372,10 +387,11 @@
       <h2>รายชื่อเมสเซนเจอร์</h2>
       <div class="row" style="margin-bottom:14px;">
         <input class="input" id="msgNewName" placeholder="พิมพ์ชื่อเมสเซนเจอร์คนใหม่" style="min-width:180px;">
-        <button class="btn ghost small" onclick="addMessengerName()">+ เพิ่มชื่อเมส</button>
-        <button class="btn ghost small" style="color:var(--red);border-color:var(--red);" onclick="removeMessengerName()">🗑 ลบชื่อที่เลือกอยู่</button>
+        <button class="btn ghost small" id="msgAddBtn" onclick="addMessengerName()">+ เพิ่มชื่อเมส</button>
+        <button class="btn ghost small" id="msgRemoveBtn" style="color:var(--red);border-color:var(--red);" onclick="removeMessengerName()">🗑 ลบชื่อที่เลือกอยู่</button>
         <button class="btn ghost small" style="color:var(--red);border-color:var(--red);" onclick="openStaffIssueModal()">⚠ แจ้งปัญหาแมส (ทั่วไป)</button>
       </div>
+      <div class="fieldHint" id="msgRosterStatus"></div>
     </div>
     <div class="toolbar">
       <div class="row">
@@ -404,9 +420,10 @@
       <h2>รายชื่อเซลส์</h2>
       <div class="row" style="margin-bottom:14px;">
         <input class="input" id="salesNewName" placeholder="พิมพ์ชื่อเซลส์คนใหม่" style="min-width:180px;">
-        <button class="btn ghost small" onclick="addSalesName()">+ เพิ่มชื่อเซลส์</button>
-        <button class="btn ghost small" style="color:var(--red);border-color:var(--red);" onclick="removeSalesName()">🗑 ลบชื่อที่เลือกอยู่</button>
+        <button class="btn ghost small" id="salesAddBtn" onclick="addSalesName()">+ เพิ่มชื่อเซลส์</button>
+        <button class="btn ghost small" id="salesRemoveBtn" style="color:var(--red);border-color:var(--red);" onclick="removeSalesName()">🗑 ลบชื่อที่เลือกอยู่</button>
       </div>
+      <div class="fieldHint" id="salesRosterStatus"></div>
     </div>
     <div class="toolbar">
       <div class="row">
@@ -436,6 +453,30 @@
         <tbody id="salesTable"></tbody>
       </table>
     </div>
+  </div>
+
+  <!-- FEED TAB — ambient "who checked in where, just now" view. Meant to be left open on a
+       spare screen/tab (office monitor, a sales person's second tab) instead of relying on a
+       LINE group for this; it reads the same Sheet data every other tab already uses, just
+       re-sorted as a live feed and auto-refreshed while this tab is the one showing. -->
+  <div id="tab-feed" style="display:none;">
+    <div class="section">
+      <h2>📋 ฟีดเช็คอินล่าสุด</h2>
+      <div class="fieldHint">เปิดหน้านี้ค้างไว้ได้เลย — ระหว่างอยู่แท็บนี้ข้อมูลจะรีเฟรชอัตโนมัติทุก ~20 วินาที ไม่ต้องกดรีเฟรชเอง เหมาะเปิดทิ้งไว้จอเดียว (คอม/มือถือ/ทีวีสำนักงาน) แทนกลุ่มไลน์</div>
+    </div>
+    <div class="toolbar">
+      <div class="row">
+        <select id="feedMessengerFilter" onchange="renderFeed()"></select>
+        <input class="input" type="date" id="feedDateFilter" onchange="renderFeed()">
+        <button class="btn ghost" onclick="clearFeedDateFilter()">ล้างตัวกรองวันที่ (ทุกวันที่)</button>
+      </div>
+      <div class="row">
+        <span class="fieldHint" id="feedAutoStatus" style="margin:0;"></span>
+        <button class="btn ghost" id="feedRefreshBtn" onclick="manualRefreshFeed()">🔄 รีเฟรชตอนนี้</button>
+      </div>
+    </div>
+    <div class="summaryStrip" id="feedSummary"></div>
+    <div class="feedList" id="feedList"></div>
   </div>
 
   <!-- ACCOUNTING TAB -->
@@ -684,14 +725,8 @@
     <h3>เช็คอิน</h3>
     <div id="checkinName" style="font-weight:700;margin-bottom:10px;"></div>
     <div id="paymentSection"></div>
-    <div class="field">
-      <label>ถ่ายรูปยืนยัน</label>
-      <div class="photoBox" id="photoBox" onclick="document.getElementById('photoInput').click()">
-        📷 แตะเพื่อถ่ายรูป
-      </div>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(event)">
-    </div>
     <div class="geoLine" id="geoLine">📍 กำลังระบุตำแหน่ง...</div>
+    <button class="btn small ghost" id="retryGeoBtn" style="display:none;margin-top:6px;" onclick="retryGeolocation()">🔄 ลองระบุตำแหน่งอีกครั้ง</button>
     <div class="geoLine mono" id="timeLine"></div>
     <div class="fieldHint" id="checkinSaveStatus" style="min-height:18px;"></div>
     <div class="modalActions">
@@ -738,10 +773,11 @@
         <label data-val="yes" onclick="selectRecur(this)"><input type="radio" name="i_recur" value="yes"><span>เคยเกิดซ้ำ</span></label>
       </div>
     </div>
+    <div class="fieldHint" id="issueSaveStatus" style="margin-bottom:8px;"></div>
     <div class="modalActions">
-      <button class="btn ghost" onclick="closeModal('issueModal')">ยกเลิก</button>
+      <button class="btn ghost" id="issueCancelBtn" onclick="closeModal('issueModal')">ยกเลิก</button>
       <button class="btn ghost" id="removeIssueBtn" style="display:none;color:var(--red);border-color:var(--red);" onclick="removeIssue()">ลบปัญหานี้</button>
-      <button class="btn primary" onclick="submitIssue()">บันทึกปัญหา</button>
+      <button class="btn primary" id="issueSaveBtn" onclick="submitIssue()">บันทึกปัญหา</button>
     </div>
   </div>
 </div>
@@ -778,9 +814,10 @@
       <label>เกี่ยวข้องกับแมสคนไหนบ้าง (เลือกได้หลายคน)</label>
       <div class="chipGroup" id="si_messengerGroup"></div>
     </div>
+    <div class="fieldHint" id="staffIssueSaveStatus" style="margin-bottom:8px;"></div>
     <div class="modalActions">
-      <button class="btn ghost" onclick="closeModal('staffIssueModal')">ยกเลิก</button>
-      <button class="btn primary" onclick="submitStaffIssue()">บันทึกปัญหา</button>
+      <button class="btn ghost" id="staffIssueCancelBtn" onclick="closeModal('staffIssueModal')">ยกเลิก</button>
+      <button class="btn primary" id="staffIssueSaveBtn" onclick="submitStaffIssue()">บันทึกปัญหา</button>
     </div>
   </div>
 </div>
@@ -825,9 +862,10 @@
       <label>เลขที่บิล / เลขอ้างอิง (ถ้ามี)</label>
       <input class="input" id="e_bill" placeholder="เช่น INV-0472, INV-0473">
     </div>
+    <div class="fieldHint" id="editStopSaveStatus" style="margin-bottom:8px;"></div>
     <div class="modalActions">
-      <button class="btn ghost" onclick="closeModal('editStopModal')">ยกเลิก</button>
-      <button class="btn primary" onclick="submitEditStop()">บันทึกการแก้ไข</button>
+      <button class="btn ghost" id="editStopCancelBtn" onclick="closeModal('editStopModal')">ยกเลิก</button>
+      <button class="btn primary" id="editStopSaveBtn" onclick="submitEditStop()">บันทึกการแก้ไข</button>
     </div>
   </div>
 </div>
@@ -1003,34 +1041,69 @@ function refreshMessengerSelects(){
   fillMessengerSelectWithPool(document.getElementById('msgSelect'));
   fillMessengerSelect(document.getElementById('acctPersonFilter'), true);
   fillMessengerSelect(document.getElementById('admPerson'), true);
+  fillMessengerSelect(document.getElementById('feedMessengerFilter'), true);
 }
 fillMessengerSelectWithPool(document.getElementById('msgSelect'));
 document.getElementById('msgDate').value = todayStr;
 fillMessengerSelect(document.getElementById('acctPersonFilter'), true);
 fillMessengerSelect(document.getElementById('admPerson'), true);
+fillMessengerSelect(document.getElementById('feedMessengerFilter'), true);
+document.getElementById('feedDateFilter').value = todayStr;
 
-function addMessengerName(){
+async function addMessengerName(){
   const input = document.getElementById('msgNewName');
   const name = input.value.trim();
   if(!name){ alert("พิมพ์ชื่อเมสเซนเจอร์ก่อนนะครับ"); return; }
   if(name === UNASSIGNED || MESSENGERS.includes(name)){ alert("มีชื่อนี้อยู่แล้ว"); input.value=""; return; }
+
+  const addBtn = document.getElementById('msgAddBtn');
+  const statusEl = document.getElementById('msgRosterStatus');
+  addBtn.disabled = true;
+  statusEl.textContent = "⏳ กำลังบันทึก...";
+  statusEl.style.color = 'var(--slate)';
+
+  const result = await syncToSheetVerified('addMessenger', { name });
+  addBtn.disabled = false;
+
+  if(!result.ok){
+    statusEl.textContent = "❌ เพิ่มชื่อไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
   MESSENGERS.push(name);
-  syncToSheet('addMessenger', { name });
   input.value = "";
+  statusEl.textContent = "";
   refreshMessengerSelects();
   document.getElementById('msgSelect').value = name;
   renderMessenger();
   renderAccounting();
   renderAdmin();
 }
-function removeMessengerName(){
+async function removeMessengerName(){
   const sel = document.getElementById('msgSelect');
   const name = sel.value;
   if(name === UNASSIGNED){ alert("อันนี้คือส่วนกลาง ไม่ใช่ชื่อเมสเซนเจอร์ เลือกชื่อคนจริงก่อนถึงจะลบได้"); return; }
   if(!name) return;
   if(!confirm(`ลบชื่อเมสเซนเจอร์ "${name}" ออกจากรายชื่อใช่ไหม? (งานที่เคยมอบหมายให้คนนี้ไว้จะยังอยู่ในระบบ ไม่หาย)`)) return;
+
+  const removeBtn = document.getElementById('msgRemoveBtn');
+  const statusEl = document.getElementById('msgRosterStatus');
+  removeBtn.disabled = true;
+  statusEl.textContent = "⏳ กำลังลบ...";
+  statusEl.style.color = 'var(--slate)';
+
+  const result = await syncToSheetVerified('removeMessenger', { name });
+  removeBtn.disabled = false;
+
+  if(!result.ok){
+    statusEl.textContent = "❌ ลบไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
   MESSENGERS = MESSENGERS.filter(n=>n!==name);
-  syncToSheet('removeMessenger', { name });
+  statusEl.textContent = "";
   refreshMessengerSelects();
   renderMessenger();
   renderAccounting();
@@ -1101,7 +1174,7 @@ refreshSalesSelects();
 
 /* ---------- TABS ---------- */
 function switchTab(tab){
-  ['messenger','sales','accounting','admin','search','trucks'].forEach(t=>{
+  ['messenger','sales','feed','accounting','admin','search','trucks'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = (t===tab)?'block':'none';
   });
   document.querySelectorAll('nav.tabs button').forEach(b=>{
@@ -1109,10 +1182,16 @@ function switchTab(tab){
   });
   if(tab==='messenger') renderMessenger();
   if(tab==='sales') renderSales();
+  if(tab==='feed') renderFeed();
   if(tab==='accounting') renderAccounting();
   if(tab==='admin') renderAdmin();
   if(tab==='search') renderSearch();
   if(tab==='trucks') renderTruckCalendar();
+
+  // Only poll the Sheet on a timer while the feed tab is the one on screen — every other tab
+  // already refreshes on explicit user action, and there's no reason to keep hitting the Sheet
+  // in the background once nobody's looking at the feed.
+  if(tab==='feed') startFeedAutoRefresh(); else stopFeedAutoRefresh();
 }
 
 /* ---------- MESSENGER VIEW ---------- */
@@ -1236,11 +1315,7 @@ function renderMessenger(){
             ${s.hasIssue && s.issueRecurring?`<span class="badge issue-recur">↻ เกิดซ้ำ</span>`:``}
           </div>
           ` : ``}
-          ${s.status==='done'?`<div class="checkinfo">✓ ${s.checkinTime} ${s.lat?('· '+s.lat.toFixed(4)+', '+s.lng.toFixed(4)):''}</div>`:``}
-          ${s.status==='done' && s.photo?`<img class="checkinThumb" src="${s.photo}" onclick="openPhotoViewer(${s.id})" title="ดูรูปเช็คอิน">`:``}
-          ${s.status==='done' && s.paymentSlipPhoto?`<img class="checkinThumb" src="${s.paymentSlipPhoto}" onclick="openSlipViewer(${s.id})" title="ดูสลิปโอนเงิน" style="border-color:var(--teal);">`:``}
-          ${s.status==='done' && s.paymentEvidencePhoto?`<img class="checkinThumb" src="${s.paymentEvidencePhoto}" onclick="openCashEvidenceViewer(${s.id})" title="ดูรูปหลักฐานเงินสด" style="border-color:var(--teal);">`:``}
-          ${s.status==='done' && s.supplierPaymentEvidencePhoto?`<img class="checkinThumb" src="${s.supplierPaymentEvidencePhoto}" onclick="openSupplierEvidenceViewer(${s.id})" title="ดูรูปหลักฐานจ่ายซัพ" style="border-color:var(--teal);">`:``}
+          ${s.status==='done'?`<div class="checkinfo">✓ เช็คอิน ${s.checkinTime} น.${s.lat?' · 📍 บันทึกตำแหน่งแล้ว':''}</div>`:``}
         </div>
       </div>
       <div class="actions">
@@ -1252,9 +1327,10 @@ function renderMessenger(){
           ${MESSENGERS.map(name=>`<option value="${name}">${name}</option>`).join('')}
         </select>
         ` : `
-        <button class="btn small ${s.status==='done'?'ghost':'primary'}" onclick="openCheckin(${s.id})">
-          ${s.status==='done'?'📷 แก้ไขเช็คอิน':'📍 เช็คอิน'}
-        </button>
+        ${s.status==='done'
+          ? `<div class="badge done" style="padding:8px 14px;font-size:13px;">✅ เช็คอินแล้ว</div>`
+          : `<button class="btn small primary" id="checkinBtn_${s.id}" onclick="handleCheckinClick(${s.id})">📍 เช็คอิน</button>`
+        }
         <button class="btn small ghost" style="${s.hasIssue?'color:var(--red);border-color:var(--red);':''}" onclick="openIssueModal(${s.id})">
           ${s.hasIssue?'⚠ แก้ไขปัญหา':'+ บันทึกปัญหา'}
         </button>
@@ -1424,9 +1500,9 @@ function paymentBadge(s){
       return `<span class="badge" style="background:var(--red-soft);color:var(--red);">💵 ต้องเก็บเงินสด ฿${formatMoney(s.paymentAmount)}</span>`;
     }
     if(s.paymentType==='โอน'){
-      if(s.paymentSlipPhoto) return `<span class="badge" style="background:var(--teal-soft);color:var(--teal);">✅ ได้สลิปโอนแล้ว</span>`;
+      if(s.paymentCollected) return `<span class="badge" style="background:var(--teal-soft);color:var(--teal);">✅ โอนเงินแล้ว ${s.paymentAmount?(' ฿'+formatMoney(s.paymentAmount)):''}</span>`;
       if(s.paymentDeferred) return `<span class="badge" style="background:var(--amber-soft);color:var(--amber-deep);">🕐 ลูกค้าจะโอนตามหลัง${s.paymentAmount?(' ฿'+formatMoney(s.paymentAmount)):''}</span>`;
-      return `<span class="badge" style="background:var(--red-soft);color:var(--red);">🏦 รอสลิปโอนเงิน${s.paymentAmount?(' ฿'+formatMoney(s.paymentAmount)):''}</span>`;
+      return `<span class="badge" style="background:var(--red-soft);color:var(--red);">🏦 รอโอนเงิน${s.paymentAmount?(' ฿'+formatMoney(s.paymentAmount)):''}</span>`;
     }
     if(s.paymentType==='สิ้นเดือน'){
       return `<span class="badge" style="background:#EEF0F4;color:var(--ink-soft);">🗓️ รวมจ่ายสิ้นเดือน</span>`;
@@ -1463,23 +1539,39 @@ function handleDragStart(ev, id){
   ev.dataTransfer.effectAllowed = 'move';
   try{ ev.dataTransfer.setData('text/plain', String(id)); }catch(e){}
 }
-function handleDrop(ev, targetId){
+async function handleDrop(ev, targetId){
   ev.preventDefault();
-  if(dragSourceId==null || dragSourceId===targetId) return;
+  const sourceId = dragSourceId;
+  dragSourceId = null;
+  if(sourceId==null || sourceId===targetId) return;
   const m = currentMessenger();
   const d = currentDate();
   const list = stops.filter(s=>s.messenger===m && s.date===d).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0));
-  const fromIdx = list.findIndex(s=>s.id===dragSourceId);
+  const fromIdx = list.findIndex(s=>s.id===sourceId);
   const toIdx = list.findIndex(s=>s.id===targetId);
   if(fromIdx===-1 || toIdx===-1) return;
+
+  // Remember the old order so it can be rolled back if the Sheet write fails — Sheets is the
+  // source of truth, so a reorder that never actually saved must not stick on screen (this is
+  // the same class of bug that used to leave the route order silently wrong after a refresh).
+  const prevOrder = list.map(s => ({ s, sortIndex: s.sortIndex }));
+
   const [moved] = list.splice(fromIdx,1);
   list.splice(toIdx,0,moved);
-  list.forEach((s,i)=>{
-    s.sortIndex = i*10;
-    syncToSheet('updateStop', { id: s.id, fields: { SortIndex: s.sortIndex } });
-  });
-  dragSourceId = null;
-  renderMessenger();
+  list.forEach((s,i)=>{ s.sortIndex = i*10; });
+  renderMessenger(); // reflect the new order immediately so the drag still feels responsive
+
+  const results = await Promise.all(list.map(s =>
+    syncToSheetVerified('updateStop', { id: s.id, fields: { SortIndex: s.sortIndex } })
+  ));
+
+  if(results.some(r=>!r.ok)){
+    // At least one write never reached the Sheet — roll back rather than leave an order on
+    // screen that the next reload (from any device) would just silently undo anyway.
+    prevOrder.forEach(({s, sortIndex})=>{ s.sortIndex = sortIndex; });
+    renderMessenger();
+    alert("❌ บันทึกลำดับใหม่ไม่สำเร็จ กรุณาลองจัดลำดับใหม่อีกครั้ง");
+  }
 }
 
 function openRouteAll(){
@@ -1701,6 +1793,9 @@ function openEditStopModal(id){
   if(!editStopTarget) return;
   document.getElementById('editStopName').textContent = editStopTarget.name;
   document.getElementById('e_bill').value = editStopTarget.billRef || '';
+  document.getElementById('editStopSaveStatus').textContent = '';
+  document.getElementById('editStopSaveBtn').disabled = false;
+  document.getElementById('editStopCancelBtn').disabled = false;
 
   // pre-fill purpose
   const purposeValues = Array.from(document.querySelectorAll('#e_purposeGroup input[name=e_purpose]')).map(r=>r.value);
@@ -1774,7 +1869,7 @@ function renderEditQtyList(){
     </div>`;
   }).join("");
 }
-function submitEditStop(){
+async function submitEditStop(){
   if(!editStopTarget) return;
   let purpose = document.querySelector('#e_purposeGroup input[name=e_purpose]:checked').value;
   if(purpose === 'อื่นๆ'){
@@ -1792,18 +1887,41 @@ function submitEditStop(){
   });
   const billRef = document.getElementById('e_bill').value.trim();
   const billQty = billQtyOf(taskItems);
+  const taskItemsText = taskItems.map(t=>`${t.type} x${t.qty}`).join('; ');
 
+  const saveBtn = document.getElementById('editStopSaveBtn');
+  const cancelBtn = document.getElementById('editStopCancelBtn');
+  const statusEl = document.getElementById('editStopSaveStatus');
+  saveBtn.disabled = true; // also guards against double-submit from a fast double-tap
+  cancelBtn.disabled = true;
+  statusEl.textContent = "⏳ กำลังบันทึก...";
+  statusEl.style.color = 'var(--slate)';
+
+  const result = await syncToSheetVerified('updateStop', {
+    id: editStopTarget.id,
+    fields: { Purpose: purpose, TaskItems: taskItemsText, BillQty: billQty, BillRef: billRef }
+  });
+
+  if(!result.ok){
+    // Do NOT apply the edit locally — Sheets is the source of truth and never received this
+    // write, so showing it as saved here would just be undone on the next reload anyway
+    // (this was the actual cause of "สิ่งที่นำไป" reverting back to empty after F5).
+    statusEl.textContent = "❌ บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.style.color = 'var(--red)';
+    saveBtn.disabled = false;
+    cancelBtn.disabled = false;
+    return;
+  }
+
+  // Confirmed saved — now it's safe to reflect the edit locally.
   editStopTarget.purpose = purpose;
   editStopTarget.taskItems = taskItems;
   editStopTarget.billRef = billRef;
   editStopTarget.billQty = billQty;
 
-  const taskItemsText = taskItems.map(t=>`${t.type} x${t.qty}`).join('; ');
-  syncToSheet('updateStop', {
-    id: editStopTarget.id,
-    fields: { Purpose: purpose, TaskItems: taskItemsText, BillQty: billQty, BillRef: billRef }
-  });
-
+  statusEl.textContent = "";
+  saveBtn.disabled = false;
+  cancelBtn.disabled = false;
   closeModal('editStopModal');
   renderMessenger();
   renderSales();
@@ -1877,7 +1995,7 @@ function submitAddStop(){
     lat: pickedPlace ? pickedPlace.lat : null, lng: pickedPlace ? pickedPlace.lng : null,
     photo:null, province, purpose,
     salesName, vehicleType, truckId, timePreference, preferredTime,
-    paymentType, paymentAmount, paymentCollected:false, paymentSlipPhoto:null,
+    paymentType, paymentAmount, paymentCollected:false,
     supplierPaymentStatus, supplierPaymentAmount, supplierPaymentDone:false,
     hasIssue:false, issueDesc:'', issueSeverity:null, issueRecurring:false
   };
@@ -2042,11 +2160,10 @@ async function loadBootstrapData(){
           lng: d.lng ? Number(d.lng) : null,
           province: d.province || '', purpose: d.purpose || '', dateRangeStart: d.dateRangeStart || '', dateRangeEnd: d.dateRangeEnd || '',
           paymentType: d.paymentType || '', paymentAmount: Number(d.paymentAmount)||0,
-          paymentCollected: !!d.paymentCollected, paymentSlipPhoto: null,
+          paymentCollected: !!d.paymentCollected,
           supplierPaymentStatus: d.supplierPaymentStatus || '', supplierPaymentAmount: Number(d.supplierPaymentAmount)||0,
           supplierPaymentDone: !!d.supplierPaymentDone,
           paymentDeferred: !!d.paymentDeferred, supplierPaymentDeferred: !!d.supplierPaymentDeferred,
-          paymentEvidencePhoto: null, supplierPaymentEvidencePhoto: null,
           photo: null,
           hasIssue: !!d.hasIssue,
           issueDesc: d.issueDesc || '',
@@ -2090,7 +2207,7 @@ async function loadBootstrapData(){
       dataLoadedFromSheet = true;
       statusEl.textContent = `เชื่อมต่อแล้ว — โหลดข้อมูลจาก Google Sheet สำเร็จ (${stops.length} งาน)`;
       statusEl.className = "status ok";
-      renderMessenger(); renderSales(); renderAccounting(); renderAdmin();
+      renderMessenger(); renderSales(); renderFeed(); renderAccounting(); renderAdmin();
       updateDemoDataBanner();
       return; // success — no need to retry further
     }catch(e){
@@ -2145,11 +2262,10 @@ async function loadStopsFromSheet(){
         lng: d.lng ? Number(d.lng) : null,
         province: d.province || '', purpose: d.purpose || '', dateRangeStart: d.dateRangeStart || '', dateRangeEnd: d.dateRangeEnd || '',
         paymentType: d.paymentType || '', paymentAmount: Number(d.paymentAmount)||0,
-        paymentCollected: !!d.paymentCollected, paymentSlipPhoto: null,
+        paymentCollected: !!d.paymentCollected,
         supplierPaymentStatus: d.supplierPaymentStatus || '', supplierPaymentAmount: Number(d.supplierPaymentAmount)||0,
         supplierPaymentDone: !!d.supplierPaymentDone,
         paymentDeferred: !!d.paymentDeferred, supplierPaymentDeferred: !!d.supplierPaymentDeferred,
-        paymentEvidencePhoto: null, supplierPaymentEvidencePhoto: null,
         photo: null, // photos aren't round-tripped back from the Sheet — only kept for the current session
         hasIssue: !!d.hasIssue,
         issueDesc: d.issueDesc || '',
@@ -2163,7 +2279,7 @@ async function loadStopsFromSheet(){
       updateDemoDataBanner();
       statusEl.textContent = `เชื่อมต่อแล้ว — โหลดงานจาก Google Sheet แล้ว ${stops.length} งาน`;
       statusEl.className = "status ok";
-      renderMessenger(); renderSales(); renderAccounting(); renderAdmin();
+      renderMessenger(); renderSales(); renderFeed(); renderAccounting(); renderAdmin();
     } else {
       // The server responded successfully but didn't send back the expected array —
       // show exactly what it sent instead of silently leaving old status text on screen.
@@ -2233,160 +2349,174 @@ async function manualRefreshCustomers(){
 
 /* ---------- CHECK-IN ---------- */
 let checkinTarget = null;
-let checkinPhotoRaw = null; // untouched capture from the camera
-let checkinPhoto = null;    // final version with the location/time stamp burned in, this is what gets saved
 let checkinGeo = null;
 
 let cashChoice = 'collected';      // 'collected' | 'deferred'
 let transferChoice = 'collected';  // 'collected' | 'deferred'
 let supplierChoice = 'collected';  // 'collected' | 'deferred'
-let cashPhotoDataUrl = null;
-let slipPhotoDataUrl = null;
-let supplierPhotoDataUrl = null;
 
 function openCheckin(id){
   checkinTarget = stops.find(s=>s.id===id);
-  checkinPhotoRaw = null; checkinPhoto = null; checkinGeo = null;
+  checkinGeo = null;
   cashChoice = 'collected'; transferChoice = 'collected'; supplierChoice = 'collected';
-  cashPhotoDataUrl = null; slipPhotoDataUrl = null; supplierPhotoDataUrl = null;
   document.getElementById('checkinName').textContent = checkinTarget.name;
   renderPaymentSection();
-  document.getElementById('photoBox').innerHTML = "📷 แตะเพื่อถ่ายรูป";
   document.getElementById('geoLine').textContent = "📍 กำลังระบุตำแหน่ง...";
   document.getElementById('geoLine').className = "geoLine";
+  document.getElementById('retryGeoBtn').style.display = 'none';
   document.getElementById('timeLine').textContent = "";
   document.getElementById('checkinSaveStatus').textContent = "";
   document.getElementById('confirmCheckinBtn').disabled = true;
   document.getElementById('cancelCheckinBtn').disabled = false;
   openModal('checkinModal');
 
+  const now = new Date();
+  document.getElementById('timeLine').textContent = "🕒 " + now.toLocaleString('th-TH');
+  requestCheckinGeolocation();
+}
+
+/* GPS is required to check in — on failure this shows a clear reason plus a retry button,
+   and does NOT let the messenger proceed without a location (matches: never silently succeed
+   without a real GPS fix). */
+function requestCheckinGeolocation(){
+  document.getElementById('geoLine').textContent = "📍 กำลังระบุตำแหน่ง...";
+  document.getElementById('geoLine').className = "geoLine";
+  document.getElementById('retryGeoBtn').style.display = 'none';
+  updateConfirmState();
+
   // Browsers refuse GPS access if this page isn't the actual top-level tab on a secure origin —
   // that includes being shown inside any preview iframe, even one hosted on an https:// site.
   const geoCheck = geoWillBeBlocked();
   if(geoCheck.blocked){
     document.getElementById('geoLine').textContent = geoCheck.inIframe
-      ? "📍 หน้านี้กำลังแสดงผ่านหน้าต่างตัวอย่าง (preview) ซึ่งเบราว์เซอร์บล็อกการขอตำแหน่งเสมอ ต้องดาวน์โหลดไฟล์ .html แล้วเปิดผ่านลิงก์เว็บโฮสติ้งของตัวเองโดยตรง (ดูวิธีในแบนเนอร์ด้านบนของหน้าแอป)"
-      : "📍 เบราว์เซอร์บล็อกการขอตำแหน่ง เพราะเปิดไฟล์นี้แบบ " + location.protocol + " (ไม่ใช่ HTTPS) — ต้องอัปโหลดขึ้นเว็บโฮสติ้งก่อนถึงจะขอ GPS ได้ ดูวิธีด้านล่างของแอป";
+      ? "⚠️ ไม่สามารถอ่านตำแหน่งได้ — หน้านี้กำลังแสดงผ่านหน้าต่างตัวอย่าง (preview) ซึ่งเบราว์เซอร์บล็อกการขอตำแหน่งเสมอ ต้องดาวน์โหลดไฟล์ .html แล้วเปิดผ่านลิงก์เว็บโฮสติ้งของตัวเองโดยตรง (ดูวิธีในแบนเนอร์ด้านบนของหน้าแอป)"
+      : "⚠️ ไม่สามารถอ่านตำแหน่งได้ — เบราว์เซอร์บล็อกเพราะเปิดไฟล์นี้แบบ " + location.protocol + " (ไม่ใช่ HTTPS) — ต้องอัปโหลดขึ้นเว็บโฮสติ้งก่อนถึงจะขอ GPS ได้";
     document.getElementById('geoLine').className = "geoLine";
     updateConfirmState();
     return;
   }
 
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(pos=>{
-      checkinGeo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      document.getElementById('geoLine').textContent = `📍 ${checkinGeo.lat.toFixed(5)}, ${checkinGeo.lng.toFixed(5)}`;
-      document.getElementById('geoLine').className = "geoLine ok";
-      stampAndPreview(); // redraw the stamp on the photo now that we have a location
-      updateConfirmState();
-    }, err=>{
-      const reasons = {
-        1: "แอปนี้ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง (Permission denied) — เช็คไอคอน 🔒 หน้า URL หรือ Settings > Safari > Location",
-        2: "อุปกรณ์หาตำแหน่งไม่ได้ตอนนี้ (Position unavailable) — ลองไปที่โล่งกว่านี้",
-        3: "หาตำแหน่งไม่ทันเวลา (Timeout) — ลองกดเช็คอินใหม่อีกครั้ง"
-      };
-      document.getElementById('geoLine').textContent = "📍 " + (reasons[err.code] || "ไม่สามารถระบุตำแหน่งได้") + " (ยังเช็คอินต่อได้ แต่รูปจะไม่มีพิกัด)";
-      document.getElementById('geoLine').className = "geoLine";
-      stampAndPreview();
-      updateConfirmState();
-    }, { timeout: 8000, enableHighAccuracy: true });
-  } else {
-    document.getElementById('geoLine').textContent = "📍 เบราว์เซอร์นี้ไม่รองรับ GPS";
+  if(!navigator.geolocation){
+    document.getElementById('geoLine').textContent = "⚠️ ไม่สามารถอ่านตำแหน่งได้ — เบราว์เซอร์นี้ไม่รองรับ GPS";
     updateConfirmState();
+    return;
   }
-  const now = new Date();
-  document.getElementById('timeLine').textContent = "🕒 " + now.toLocaleString('th-TH');
-}
 
-function onPhotoSelected(evt){
-  const file = evt.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e=>{
-    checkinPhotoRaw = e.target.result;
-    stampAndPreview();
-  };
-  reader.readAsDataURL(file);
-}
-
-/* Burns the customer name, address, timestamp and GPS coordinates directly onto the photo,
-   so the proof-of-visit travels with the image itself and shows up later wherever the photo is viewed. */
-function stampAndPreview(){
-  if(!checkinPhotoRaw) return;
-  const img = new Image();
-  img.onload = ()=>{
-    // Phone cameras often shoot 3000-4000px per side — way more than needed for a proof-of-visit
-    // photo, and expensive to keep in memory / re-render as a thumbnail on every list refresh.
-    // Downscale to a sane max dimension first; this is the single biggest win for phone performance.
-    const MAX_DIM = 1280;
-    const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    const barHeight = Math.max(76, Math.round(canvas.height * 0.16));
-    ctx.fillStyle = 'rgba(0,0,0,0.58)';
-    ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
-
-    const pad = Math.round(canvas.width * 0.035);
-    const maxWidth = canvas.width - pad * 2;
-    const nameSize = Math.max(15, Math.round(canvas.width * 0.034));
-    const subSize = Math.round(nameSize * 0.8);
-    let y = canvas.height - barHeight + pad * 0.5;
-
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#fff';
-    ctx.font = `600 ${nameSize}px sans-serif`;
-    ctx.fillText(truncateCanvasText(ctx, checkinTarget ? checkinTarget.name : '', maxWidth), pad, y);
-    y += nameSize * 1.3;
-
-    ctx.font = `400 ${subSize}px sans-serif`;
-    const addrLine = checkinTarget ? (isMapLink(checkinTarget.addr) ? '🔗 บันทึกตำแหน่งจากลิงก์ Google Maps' : checkinTarget.addr) : '';
-    ctx.fillText(truncateCanvasText(ctx, addrLine, maxWidth), pad, y);
-    y += subSize * 1.4;
-
-    const now = new Date();
-    const timeStr = now.toLocaleString('th-TH');
-    const geoStr = checkinGeo ? `📍 ${checkinGeo.lat.toFixed(5)}, ${checkinGeo.lng.toFixed(5)}` : '📍 ไม่พบตำแหน่ง GPS';
-    ctx.fillText(truncateCanvasText(ctx, `${timeStr}    ${geoStr}`, maxWidth), pad, y);
-
-    checkinPhoto = canvas.toDataURL('image/jpeg', 0.75);
-    document.getElementById('photoBox').innerHTML = `<img src="${checkinPhoto}"><div>ถ่ายใหม่</div>`;
+  navigator.geolocation.getCurrentPosition(pos=>{
+    checkinGeo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    document.getElementById('geoLine').textContent = `📍 บันทึกตำแหน่งแล้ว (${checkinGeo.lat.toFixed(5)}, ${checkinGeo.lng.toFixed(5)})`;
+    document.getElementById('geoLine').className = "geoLine ok";
+    document.getElementById('retryGeoBtn').style.display = 'none';
     updateConfirmState();
-  };
-  img.src = checkinPhotoRaw;
+  }, err=>{
+    const reasons = {
+      1: "แอปนี้ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง (Permission denied) — เช็คไอคอน 🔒 หน้า URL หรือ Settings > Safari > Location",
+      2: "อุปกรณ์หาตำแหน่งไม่ได้ตอนนี้ (Position unavailable) — ลองไปที่โล่งกว่านี้",
+      3: "หาตำแหน่งไม่ทันเวลา (Timeout) — ลองกดเช็คอินใหม่อีกครั้ง"
+    };
+    checkinGeo = null;
+    document.getElementById('geoLine').textContent = "⚠️ ไม่สามารถอ่านตำแหน่งได้ — " + (reasons[err.code] || "ไม่ทราบสาเหตุ") + " กรุณาเปิด Location/GPS แล้วลองใหม่";
+    document.getElementById('geoLine').className = "geoLine";
+    document.getElementById('retryGeoBtn').style.display = 'inline-block';
+    updateConfirmState();
+  }, { timeout: 8000, enableHighAccuracy: true });
 }
-function truncateCanvasText(ctx, text, maxWidth){
-  text = text || '';
-  if(ctx.measureText(text).width <= maxWidth) return text;
-  let t = text;
-  while(t.length>0 && ctx.measureText(t+'…').width > maxWidth){ t = t.slice(0,-1); }
-  return t + '…';
+function retryGeolocation(){
+  requestCheckinGeolocation();
+}
+
+/* Wraps navigator.geolocation in a Promise, reusing the exact same blocked-context checks and
+   human-readable error reasons as the modal-based flow — rejects with a plain-string reason. */
+function getCurrentPositionAsync(){
+  return new Promise((resolve, reject)=>{
+    const geoCheck = geoWillBeBlocked();
+    if(geoCheck.blocked){
+      reject(geoCheck.inIframe
+        ? "หน้านี้กำลังแสดงผ่านหน้าต่างตัวอย่าง (preview) ซึ่งเบราว์เซอร์บล็อกการขอตำแหน่งเสมอ ต้องเปิดผ่านลิงก์เว็บโฮสติ้งของตัวเองโดยตรง"
+        : "เบราว์เซอร์บล็อกการขอตำแหน่ง เพราะเปิดไฟล์นี้แบบ " + location.protocol + " (ไม่ใช่ HTTPS)");
+      return;
+    }
+    if(!navigator.geolocation){
+      reject("เบราว์เซอร์นี้ไม่รองรับ GPS");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      err => {
+        const reasons = {
+          1: "แอปนี้ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง (Permission denied) — เช็คไอคอน 🔒 หน้า URL หรือ Settings > Safari > Location",
+          2: "อุปกรณ์หาตำแหน่งไม่ได้ตอนนี้ (Position unavailable) — ลองไปที่โล่งกว่านี้",
+          3: "หาตำแหน่งไม่ทันเวลา (Timeout) — ลองกดเช็คอินใหม่อีกครั้ง"
+        };
+        reject(reasons[err.code] || "ไม่สามารถระบุตำแหน่งได้");
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  });
+}
+
+/* Entry point from the card's "เช็คอิน" button. Jobs that need a payment decision (cash/transfer/
+   supplier) still get the small modal, since a real choice has to be made there — everything else
+   checks in with a single tap, no modal, no photo, just GPS + confirm, handled inline on the card. */
+function handleCheckinClick(id){
+  const s = stops.find(x=>x.id===id);
+  if(!s || s.status==='done') return;
+  const needsPaymentChoice = (s.category==='ลูกค้า' && (s.paymentType==='เงินสด' || s.paymentType==='โอน'))
+    || (s.category==='ซัพพลายเออร์' && s.supplierPaymentStatus==='ต้องจ่ายเงินสด');
+  if(needsPaymentChoice){
+    openCheckin(id);
+    return;
+  }
+  performQuickCheckin(id);
+}
+
+async function performQuickCheckin(id){
+  const s = stops.find(x=>x.id===id);
+  if(!s) return;
+  const btn = document.getElementById('checkinBtn_'+id);
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ กำลังเช็คอิน...'; }
+
+  let geo;
+  try{
+    geo = await getCurrentPositionAsync();
+  }catch(reason){
+    if(btn){ btn.disabled = false; btn.textContent = '📍 เช็คอิน'; }
+    alert("⚠️ ไม่สามารถอ่านตำแหน่งได้\n" + reason + "\n\nกรุณาเปิด Location/GPS แล้วลองใหม่");
+    return;
+  }
+
+  const now = new Date();
+  const checkinTime = now.toLocaleString('th-TH');
+  const result = await syncToSheetVerified('checkin', {
+    id: s.id, messenger: s.messenger, date: s.date, name: s.name,
+    taskItemsText: (s.taskItems||[]).map(t=>`${t.type} x${t.qty}`).join('; '),
+    billRef: s.billRef, time: checkinTime, lat: geo.lat, lng: geo.lng
+  });
+
+  if(!result.ok){
+    if(btn){ btn.disabled = false; btn.textContent = '📍 เช็คอิน'; }
+    alert("❌ เช็คอินไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")");
+    return;
+  }
+
+  // Confirmed saved (or already was, per the backend's idempotency check) — safe to reflect locally.
+  s.status = 'done';
+  s.checkinTime = checkinTime;
+  s.lat = geo.lat;
+  s.lng = geo.lng;
+  renderMessenger();
+  renderSales();
+  renderFeed();
 }
 
 function updateConfirmState(){
-  let ok = !!checkinPhoto;
-  const s = checkinTarget;
-  if(s){
-    if(s.category==='ลูกค้า' && s.paymentType==='เงินสด'){
-      ok = ok && (cashChoice==='deferred' || !!cashPhotoDataUrl);
-    }
-    if(s.category==='ลูกค้า' && s.paymentType==='โอน'){
-      ok = ok && (transferChoice==='deferred' || !!slipPhotoDataUrl);
-    }
-    if(s.category==='ซัพพลายเออร์' && s.supplierPaymentStatus==='ต้องจ่ายเงินสด'){
-      ok = ok && (supplierChoice==='deferred' || !!supplierPhotoDataUrl);
-    }
-  }
-  document.getElementById('confirmCheckinBtn').disabled = !ok;
+  document.getElementById('confirmCheckinBtn').disabled = !checkinGeo;
 }
 
-/* Shows whatever payment-collection step this stop needs (cash to collect with photo evidence,
-   transfer slip to attach, or cash to pay a supplier) right in the check-in modal — required
-   before confirming, unless the messenger marks it as deferred (customer/supplier will pay later),
-   which lets the visit still be closed out without blocking on money that isn't in hand yet. */
+/* Shows whatever payment-collection choice this stop needs (cash to collect, transfer to
+   confirm, or cash to pay a supplier) right in the check-in modal — no photo required, just
+   a quick collected/deferred choice, since the messenger marks it as deferred when the
+   customer/supplier will pay later instead of holding up the check-in. */
 function renderPaymentSection(){
   const s = checkinTarget;
   const el = document.getElementById('paymentSection');
@@ -2402,10 +2532,6 @@ function renderPaymentSection(){
           <label data-val="deferred" onclick="selectCashChoice(this)">
             <input type="radio" name="cashChoice" value="deferred"><span>🕐 ลูกค้าจะจ่ายตามหลัง</span>
           </label>
-        </div>
-        <div id="cashEvidenceField" style="margin-top:8px;">
-          <div class="photoBox" id="cashPhotoBox" onclick="document.getElementById('cashPhotoInput').click()">📷 แตะเพื่อถ่ายรูปเงินสด/ใบเสร็จเป็นหลักฐาน</div>
-          <input type="file" id="cashPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="onCashPhotoSelected(event)">
         </div>
       </div>`;
   } else if(s.category==='ลูกค้า' && s.paymentType==='โอน'){
@@ -2424,11 +2550,6 @@ function renderPaymentSection(){
             <input type="radio" name="transferChoice" value="deferred"><span>🕐 จะโอนตามหลัง</span>
           </label>
         </div>
-        <div id="slipEvidenceField" style="margin-top:8px;">
-          <label style="border:none;padding:0;color:var(--red);">แนบรูปสลิปโอนเงิน</label>
-          <div class="photoBox" id="slipPhotoBox" onclick="document.getElementById('slipPhotoInput').click()" style="margin-top:6px;">📎 แตะเพื่อถ่ายรูปสลิป</div>
-          <input type="file" id="slipPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="onSlipPhotoSelected(event)">
-        </div>
       </div>`;
   } else if(s.category==='ซัพพลายเออร์' && s.supplierPaymentStatus==='ต้องจ่ายเงินสด'){
     el.innerHTML = `
@@ -2442,10 +2563,6 @@ function renderPaymentSection(){
             <input type="radio" name="supplierChoice" value="deferred"><span>🕐 จ่ายทีหลัง</span>
           </label>
         </div>
-        <div id="supplierEvidenceField" style="margin-top:8px;">
-          <div class="photoBox" id="supplierPhotoBox" onclick="document.getElementById('supplierPhotoInput').click()">📷 แตะเพื่อถ่ายรูปเงินสด/ใบเสร็จเป็นหลักฐาน</div>
-          <input type="file" id="supplierPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="onSupplierPhotoSelected(event)">
-        </div>
       </div>`;
   } else {
     el.innerHTML = '';
@@ -2456,64 +2573,27 @@ function selectCashChoice(label){
   document.querySelectorAll('#cashChoiceGroup label').forEach(l=>l.classList.remove('active'));
   label.classList.add('active'); label.querySelector('input').checked = true;
   cashChoice = label.dataset.val;
-  document.getElementById('cashEvidenceField').style.display = (cashChoice==='collected') ? 'block' : 'none';
   updateConfirmState();
 }
 function selectTransferChoice(label){
   document.querySelectorAll('#transferChoiceGroup label').forEach(l=>l.classList.remove('active'));
   label.classList.add('active'); label.querySelector('input').checked = true;
   transferChoice = label.dataset.val;
-  document.getElementById('slipEvidenceField').style.display = (transferChoice==='collected') ? 'block' : 'none';
   updateConfirmState();
 }
 function selectSupplierChoice(label){
   document.querySelectorAll('#supplierChoiceGroup label').forEach(l=>l.classList.remove('active'));
   label.classList.add('active'); label.querySelector('input').checked = true;
   supplierChoice = label.dataset.val;
-  document.getElementById('supplierEvidenceField').style.display = (supplierChoice==='collected') ? 'block' : 'none';
   updateConfirmState();
-}
-
-/* Shared downscale-and-preview logic for the three evidence photo inputs (cash, slip, supplier) */
-function captureEvidencePhoto(file, boxId, onDone){
-  const reader = new FileReader();
-  reader.onload = e=>{
-    const img = new Image();
-    img.onload = ()=>{
-      const MAX_DIM = 1280;
-      const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
-      document.getElementById(boxId).innerHTML = `<img src="${dataUrl}"><div>ถ่ายใหม่</div>`;
-      onDone(dataUrl);
-      updateConfirmState();
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-function onCashPhotoSelected(evt){
-  const file = evt.target.files[0];
-  if(!file) return;
-  captureEvidencePhoto(file, 'cashPhotoBox', dataUrl => { cashPhotoDataUrl = dataUrl; });
-}
-function onSlipPhotoSelected(evt){
-  const file = evt.target.files[0];
-  if(!file) return;
-  captureEvidencePhoto(file, 'slipPhotoBox', dataUrl => { slipPhotoDataUrl = dataUrl; });
-}
-function onSupplierPhotoSelected(evt){
-  const file = evt.target.files[0];
-  if(!file) return;
-  captureEvidencePhoto(file, 'supplierPhotoBox', dataUrl => { supplierPhotoDataUrl = dataUrl; });
 }
 
 async function confirmCheckin(){
   if(!checkinTarget) return;
+  if(!checkinGeo){
+    alert("⚠️ ยังไม่มีตำแหน่ง GPS — กรุณารอหรือกด 'ลองระบุตำแหน่งอีกครั้ง' ก่อน");
+    return;
+  }
 
   const confirmBtn = document.getElementById('confirmCheckinBtn');
   const cancelBtn = document.getElementById('cancelCheckinBtn');
@@ -2525,26 +2605,22 @@ async function confirmCheckin(){
 
   const now = new Date();
   const checkinTime = now.toLocaleString('th-TH');
-  const lat = checkinGeo ? checkinGeo.lat : checkinTarget.lat;
-  const lng = checkinGeo ? checkinGeo.lng : checkinTarget.lng;
+  const lat = checkinGeo.lat;
+  const lng = checkinGeo.lng;
 
   let paymentCollected = checkinTarget.paymentCollected, paymentDeferred = checkinTarget.paymentDeferred;
-  let paymentSlipPhoto = checkinTarget.paymentSlipPhoto, paymentEvidencePhoto = checkinTarget.paymentEvidencePhoto;
   let supplierPaymentDone = checkinTarget.supplierPaymentDone, supplierPaymentDeferred = checkinTarget.supplierPaymentDeferred;
-  let supplierPaymentEvidencePhoto = checkinTarget.supplierPaymentEvidencePhoto;
   if(checkinTarget.paymentType==='เงินสด'){
     paymentCollected = (cashChoice==='collected');
     paymentDeferred = (cashChoice==='deferred');
-    paymentEvidencePhoto = (cashChoice==='collected') ? cashPhotoDataUrl : null;
   }
   if(checkinTarget.paymentType==='โอน'){
-    paymentSlipPhoto = (transferChoice==='collected') ? slipPhotoDataUrl : null;
+    paymentCollected = (transferChoice==='collected');
     paymentDeferred = (transferChoice==='deferred');
   }
   if(checkinTarget.supplierPaymentStatus==='ต้องจ่ายเงินสด'){
     supplierPaymentDone = (supplierChoice==='collected');
     supplierPaymentDeferred = (supplierChoice==='deferred');
-    supplierPaymentEvidencePhoto = (supplierChoice==='collected') ? supplierPhotoDataUrl : null;
   }
 
   const result = await syncToSheetVerified('checkin', {
@@ -2553,8 +2629,6 @@ async function confirmCheckin(){
     time: checkinTime, lat, lng,
     paymentCollected: paymentCollected ? 'YES' : '',
     paymentDeferred: paymentDeferred ? 'YES' : '',
-    hasSlip: paymentSlipPhoto ? 'YES' : '',
-    hasCashEvidence: paymentEvidencePhoto ? 'YES' : '',
     supplierPaymentDone: supplierPaymentDone ? 'YES' : '',
     supplierPaymentDeferred: supplierPaymentDeferred ? 'YES' : ''
   });
@@ -2562,7 +2636,7 @@ async function confirmCheckin(){
   if(!result.ok){
     // Do NOT mark as done — Google Sheets is the source of truth, and it never received this
     // write, so pretending success here would just come undone on the next reload anyway.
-    statusEl.textContent = "❌ บันทึกเช็คอินไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.textContent = "❌ เช็คอินไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
     statusEl.style.color = 'var(--red)';
     confirmBtn.disabled = false;
     cancelBtn.disabled = false;
@@ -2572,16 +2646,12 @@ async function confirmCheckin(){
   // Confirmed saved — now it's safe to reflect "done" locally.
   checkinTarget.status = 'done';
   checkinTarget.checkinTime = checkinTime;
-  checkinTarget.photo = checkinPhoto;
   checkinTarget.lat = lat;
   checkinTarget.lng = lng;
   checkinTarget.paymentCollected = paymentCollected;
   checkinTarget.paymentDeferred = paymentDeferred;
-  checkinTarget.paymentSlipPhoto = paymentSlipPhoto;
-  checkinTarget.paymentEvidencePhoto = paymentEvidencePhoto;
   checkinTarget.supplierPaymentDone = supplierPaymentDone;
   checkinTarget.supplierPaymentDeferred = supplierPaymentDeferred;
-  checkinTarget.supplierPaymentEvidencePhoto = supplierPaymentEvidencePhoto;
 
   statusEl.textContent = "";
   confirmBtn.disabled = false;
@@ -2589,31 +2659,7 @@ async function confirmCheckin(){
   closeModal('checkinModal');
   renderMessenger();
   renderSales();
-}
-
-function openPhotoViewer(id){
-  const s = stops.find(x=>x.id===id);
-  if(!s || !s.photo) return;
-  document.getElementById('photoViewImg').src = s.photo;
-  openModal('photoViewModal');
-}
-function openSlipViewer(id){
-  const s = stops.find(x=>x.id===id);
-  if(!s || !s.paymentSlipPhoto) return;
-  document.getElementById('photoViewImg').src = s.paymentSlipPhoto;
-  openModal('photoViewModal');
-}
-function openCashEvidenceViewer(id){
-  const s = stops.find(x=>x.id===id);
-  if(!s || !s.paymentEvidencePhoto) return;
-  document.getElementById('photoViewImg').src = s.paymentEvidencePhoto;
-  openModal('photoViewModal');
-}
-function openSupplierEvidenceViewer(id){
-  const s = stops.find(x=>x.id===id);
-  if(!s || !s.supplierPaymentEvidencePhoto) return;
-  document.getElementById('photoViewImg').src = s.supplierPaymentEvidencePhoto;
-  openModal('photoViewModal');
+  renderFeed();
 }
 
 /* ---------- ISSUE LOGGING ---------- */
@@ -2623,6 +2669,9 @@ function openIssueModal(id){
   if(!issueTarget) return;
   document.getElementById('issueName').textContent = issueTarget.name;
   document.getElementById('i_desc').value = issueTarget.issueDesc || '';
+  document.getElementById('issueSaveStatus').textContent = '';
+  document.getElementById('issueSaveBtn').disabled = false;
+  document.getElementById('issueCancelBtn').disabled = false;
 
   const category = issueTarget.issueCategory || 'ลูกค้า';
   document.querySelectorAll('#i_categoryGroup label').forEach(l=>{
@@ -2660,6 +2709,7 @@ function openIssueModal(id){
   });
 
   document.getElementById('removeIssueBtn').style.display = issueTarget.hasIssue ? 'inline-block' : 'none';
+  document.getElementById('removeIssueBtn').disabled = false;
   openModal('issueModal');
 }
 function selectIssueCategory(label){
@@ -2678,7 +2728,7 @@ function selectRecur(label){
   label.classList.add('active');
   label.querySelector('input').checked = true;
 }
-function submitIssue(){
+async function submitIssue(){
   if(!issueTarget) return;
   const desc = document.getElementById('i_desc').value.trim();
   if(!desc){ alert("กรุณากรอกรายละเอียดปัญหา"); return; }
@@ -2689,29 +2739,85 @@ function submitIssue(){
     ? Array.from(document.querySelectorAll('#i_involvedGroup input:checked')).map(cb=>cb.value)
     : [];
   if(issueCategory==='แมส' && issueMessengers.length===0){ alert("กรุณาเลือกแมสที่เกี่ยวข้องอย่างน้อย 1 คน"); return; }
+
+  const saveBtn = document.getElementById('issueSaveBtn');
+  const cancelBtn = document.getElementById('issueCancelBtn');
+  const removeBtn = document.getElementById('removeIssueBtn');
+  const statusEl = document.getElementById('issueSaveStatus');
+  saveBtn.disabled = true; // also guards against double-submit from a fast double-tap
+  cancelBtn.disabled = true;
+  removeBtn.disabled = true;
+  statusEl.textContent = "⏳ กำลังบันทึก...";
+  statusEl.style.color = 'var(--slate)';
+
+  const result = await syncToSheetVerified('issue', {
+    id: issueTarget.id, messenger: issueTarget.messenger, date: issueTarget.date,
+    name: issueTarget.name, addr: issueTarget.addr, category: issueCategory, severity, recurring: recurring ? 'YES' : 'NO', desc,
+    involvedMessengers: issueMessengers.join(', ')
+  });
+
+  if(!result.ok){
+    // Sheets never received this write — don't reflect it locally, or it would just look like
+    // it reverted on the next reload (or on another device) with no explanation.
+    statusEl.textContent = "❌ บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.style.color = 'var(--red)';
+    saveBtn.disabled = false;
+    cancelBtn.disabled = false;
+    removeBtn.disabled = false;
+    return;
+  }
+
   issueTarget.hasIssue = true;
   issueTarget.issueDesc = desc;
   issueTarget.issueCategory = issueCategory;
   issueTarget.issueSeverity = severity;
   issueTarget.issueRecurring = recurring;
   issueTarget.issueMessengers = issueMessengers;
-  syncToSheet('issue', {
-    id: issueTarget.id, messenger: issueTarget.messenger, date: issueTarget.date,
-    name: issueTarget.name, addr: issueTarget.addr, category: issueCategory, severity, recurring: recurring ? 'YES' : 'NO', desc,
-    involvedMessengers: issueMessengers.join(', ')
-  });
+
+  statusEl.textContent = "";
+  saveBtn.disabled = false;
+  cancelBtn.disabled = false;
+  removeBtn.disabled = false;
   closeModal('issueModal');
   renderMessenger();
   renderSearch();
 }
-function removeIssue(){
+async function removeIssue(){
   if(!issueTarget) return;
+  const saveBtn = document.getElementById('issueSaveBtn');
+  const cancelBtn = document.getElementById('issueCancelBtn');
+  const removeBtn = document.getElementById('removeIssueBtn');
+  const statusEl = document.getElementById('issueSaveStatus');
+  saveBtn.disabled = true;
+  cancelBtn.disabled = true;
+  removeBtn.disabled = true;
+  statusEl.textContent = "⏳ กำลังลบ...";
+  statusEl.style.color = 'var(--slate)';
+
+  const result = await syncToSheetVerified('removeIssue', { id: issueTarget.id });
+
+  if(!result.ok){
+    // Don't clear it locally — the Issues sheet still has the old record, so it would just
+    // reappear on the next reload (or on another device) looking like the delete never happened.
+    statusEl.textContent = "❌ ลบไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.style.color = 'var(--red)';
+    saveBtn.disabled = false;
+    cancelBtn.disabled = false;
+    removeBtn.disabled = false;
+    return;
+  }
+
   issueTarget.hasIssue = false;
   issueTarget.issueDesc = '';
   issueTarget.issueCategory = null;
   issueTarget.issueSeverity = null;
   issueTarget.issueRecurring = false;
   issueTarget.issueMessengers = [];
+
+  statusEl.textContent = "";
+  saveBtn.disabled = false;
+  cancelBtn.disabled = false;
+  removeBtn.disabled = false;
   closeModal('issueModal');
   renderMessenger();
   renderSearch();
@@ -2722,6 +2828,9 @@ let staffIssues = [];
 function openStaffIssueModal(){
   document.getElementById('si_date').value = todayStr;
   document.getElementById('si_desc').value = '';
+  document.getElementById('staffIssueSaveStatus').textContent = '';
+  document.getElementById('staffIssueSaveBtn').disabled = false;
+  document.getElementById('staffIssueCancelBtn').disabled = false;
   document.querySelectorAll('#si_severityGroup label').forEach(l=>{
     l.classList.toggle('active', l.dataset.val === 'กลาง');
     l.querySelector('input').checked = (l.dataset.val === 'กลาง');
@@ -2746,7 +2855,7 @@ function selectStaffRecur(label){
   label.classList.add('active');
   label.querySelector('input').checked = true;
 }
-function submitStaffIssue(){
+async function submitStaffIssue(){
   const date = document.getElementById('si_date').value;
   const desc = document.getElementById('si_desc').value.trim();
   if(!date){ alert("กรุณาเลือกวันที่"); return; }
@@ -2755,34 +2864,87 @@ function submitStaffIssue(){
   const recurring = document.querySelector('#si_recurGroup input[name=si_recur]:checked').value === 'yes';
   const messengers = Array.from(document.querySelectorAll('#si_messengerGroup input:checked')).map(cb=>cb.value);
   if(messengers.length===0){ alert("กรุณาเลือกแมสที่เกี่ยวข้องอย่างน้อย 1 คน (ถ้ายังไม่รู้ว่าใคร เลือกไว้ก่อนแล้วมาแก้ทีหลังได้)"); return; }
+
+  const saveBtn = document.getElementById('staffIssueSaveBtn');
+  const cancelBtn = document.getElementById('staffIssueCancelBtn');
+  const statusEl = document.getElementById('staffIssueSaveStatus');
+  saveBtn.disabled = true;
+  cancelBtn.disabled = true;
+  statusEl.textContent = "⏳ กำลังบันทึก...";
+  statusEl.style.color = 'var(--slate)';
+
   const id = generateStopId();
-  const issue = { id, date, desc, severity, recurring, messengers };
-  staffIssues.push(issue);
-  syncToSheet('staffIssue', { id, date, desc, severity, recurring: recurring?'YES':'NO', messengers: messengers.join(', ') });
+  const result = await syncToSheetVerified('staffIssue', { id, date, desc, severity, recurring: recurring?'YES':'NO', messengers: messengers.join(', ') });
+
+  if(!result.ok){
+    statusEl.textContent = "❌ บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.style.color = 'var(--red)';
+    saveBtn.disabled = false;
+    cancelBtn.disabled = false;
+    return;
+  }
+
+  staffIssues.push({ id, date, desc, severity, recurring, messengers });
+
+  statusEl.textContent = "";
+  saveBtn.disabled = false;
+  cancelBtn.disabled = false;
   closeModal('staffIssueModal');
   renderAdmin();
 }
 
 /* ---------- SALES VIEW ---------- */
-function addSalesName(){
+async function addSalesName(){
   const input = document.getElementById('salesNewName');
   const name = input.value.trim();
   if(!name){ alert("พิมพ์ชื่อเซลส์ก่อนนะครับ"); return; }
   if(SALES.includes(name)){ alert("มีชื่อนี้อยู่แล้ว"); input.value=""; return; }
+
+  const addBtn = document.getElementById('salesAddBtn');
+  const statusEl = document.getElementById('salesRosterStatus');
+  addBtn.disabled = true;
+  statusEl.textContent = "⏳ กำลังบันทึก...";
+  statusEl.style.color = 'var(--slate)';
+
+  const result = await syncToSheetVerified('addSales', { name });
+  addBtn.disabled = false;
+
+  if(!result.ok){
+    statusEl.textContent = "❌ เพิ่มชื่อไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
   SALES.push(name);
-  syncToSheet('addSales', { name });
   input.value = "";
+  statusEl.textContent = "";
   refreshSalesSelects();
   document.getElementById('salesSelect').value = name;
   renderSales();
 }
-function removeSalesName(){
+async function removeSalesName(){
   const sel = document.getElementById('salesSelect');
   const name = sel.value;
   if(!name){ return; }
   if(!confirm(`ลบชื่อเซลส์ "${name}" ออกจากรายชื่อใช่ไหม? (งานที่เคยแจ้งไว้จะยังอยู่ในระบบ ไม่หาย)`)) return;
+
+  const removeBtn = document.getElementById('salesRemoveBtn');
+  const statusEl = document.getElementById('salesRosterStatus');
+  removeBtn.disabled = true;
+  statusEl.textContent = "⏳ กำลังลบ...";
+  statusEl.style.color = 'var(--slate)';
+
+  const result = await syncToSheetVerified('removeSales', { name });
+  removeBtn.disabled = false;
+
+  if(!result.ok){
+    statusEl.textContent = "❌ ลบไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")";
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
   SALES = SALES.filter(n=>n!==name);
-  syncToSheet('removeSales', { name });
+  statusEl.textContent = "";
   refreshSalesSelects();
   renderSales();
 }
@@ -2851,7 +3013,115 @@ function clearSalesDateFilter(){
   renderSales();
 }
 
+/* ---------- ACTIVITY FEED VIEW ----------
+   A read-only, chat-feed-style view of "who checked in where, just now" — sourced from the exact
+   same `stops` array every other tab already uses (which itself comes straight from the Sheet via
+   syncToSheetVerified/loadStopsFromSheet), so this needed zero new backend work. It exists so sales
+   can glance at check-ins the way they used to via a LINE group, without FUTAI needing a LINE
+   Messaging API plan at all — see startFeedAutoRefresh() below for the auto-refresh half of that. */
+
+// checkinTime is stored as a locale-formatted string (now.toLocaleString('th-TH'), e.g.
+// "10/9/2569 14:32:15") for display elsewhere in the app — rather than re-parsing the whole
+// locale string (fragile: exact field order/separators vary by browser), pull just the HH:MM:SS
+// out with a regex. That's enough to sort/label same-day check-ins correctly, which covers the
+// feed's main use case.
+function extractCheckinSeconds(checkinTimeStr){
+  if(!checkinTimeStr) return -1;
+  const m = String(checkinTimeStr).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(!m) return -1;
+  return (Number(m[1])*3600) + (Number(m[2])*60) + Number(m[3]||0);
+}
+function formatCheckinClock(checkinTimeStr){
+  const m = String(checkinTimeStr||'').match(/(\d{1,2}):(\d{2})/);
+  return m ? `${m[1].padStart(2,'0')}:${m[2]} น.` : '-';
+}
+function feedRelativeLabel(dateStr, checkinTimeStr){
+  if(dateStr !== todayStr) return ''; // "x นาทีที่แล้ว" only makes sense for today's check-ins
+  const secs = extractCheckinSeconds(checkinTimeStr);
+  if(secs < 0) return '';
+  const now = new Date();
+  const nowSecs = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+  const diffMin = Math.round((nowSecs - secs)/60);
+  if(diffMin < 0 || diffMin > 59) return '';
+  return diffMin < 1 ? 'เมื่อสักครู่' : `${diffMin} นาทีที่แล้ว`;
+}
+
+function renderFeed(){
+  const messengerFilter = document.getElementById('feedMessengerFilter').value;
+  const dateFilter = document.getElementById('feedDateFilter').value;
+
+  let list = stops.filter(s=>s.status==='done' && s.checkinTime);
+  if(dateFilter) list = list.filter(s=>s.date===dateFilter);
+  if(messengerFilter && messengerFilter!=='all') list = list.filter(s=>s.messenger===messengerFilter);
+
+  list = list.sort((a,b)=>{
+    if(a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return extractCheckinSeconds(b.checkinTime) - extractCheckinSeconds(a.checkinTime);
+  }).slice(0, 150); // a feed, not an archive — older history still lives in the ค้นหา/บัญชี tabs
+
+  document.getElementById('feedSummary').innerHTML = `
+    <div class="kpi"><div class="num">${list.length}</div><div class="lbl">รายการเช็คอินที่แสดง</div></div>
+  `;
+
+  document.getElementById('feedAutoStatus').textContent = sheetWebAppUrl
+    ? `🟢 ออนไลน์ — โหลดล่าสุด ${new Date().toLocaleTimeString('th-TH')}`
+    : `⚪ ยังไม่ได้เชื่อมต่อ Google Sheet — ใส่ URL ที่ปุ่ม ⚙ ตั้งค่า ด้านบนก่อน`;
+
+  document.getElementById('feedList').innerHTML = list.map(s=>{
+    const issueBadge = s.hasIssue ? `<span class="badge" style="background:var(--red-soft);color:var(--red);">⚠ มีปัญหา</span>` : '';
+    const dateLabel = s.date===todayStr ? '' : `${s.date} · `;
+    const rel = feedRelativeLabel(s.date, s.checkinTime);
+    return `
+    <div class="feedItem">
+      <div class="feedDot"></div>
+      <div class="feedBody">
+        <div class="feedLine"><b>${escapeHtml(s.messenger)}</b> เช็คอินแล้ว — ${escapeHtml(s.name)} <span class="badge type">${s.category||'ลูกค้า'}</span></div>
+        <div class="feedMeta">${paymentBadge(s)}${issueBadge}</div>
+      </div>
+      <div class="feedTime">${dateLabel}${formatCheckinClock(s.checkinTime)}${rel ? `<div class="feedRelative">${rel}</div>` : ''}</div>
+    </div>`;
+  }).join("") || `<div class="emptyState"><div class="disp">ยังไม่มีเช็คอินที่ตรงกับตัวกรองนี้</div>พอมีคนกดเช็คอิน รายการจะขึ้นที่นี่ทันที (หรือภายใน ~20 วินาทีถ้าเช็คอินจากเครื่องอื่น)</div>`;
+}
+function clearFeedDateFilter(){
+  document.getElementById('feedDateFilter').value = "";
+  renderFeed();
+}
+async function manualRefreshFeed(){
+  if(!sheetWebAppUrl){
+    alert("ยังไม่ได้ใส่ Google Apps Script URL ด้านบน — ใส่ก่อนแล้วค่อยกดดึงข้อมูล");
+    return;
+  }
+  const btn = document.getElementById('feedRefreshBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ กำลังรีเฟรช...'; }
+  await loadStopsFromSheet(); // already calls renderFeed() on success
+  if(btn){ btn.disabled = false; btn.textContent = '🔄 รีเฟรชตอนนี้'; }
+}
+
+// Auto-refresh only runs while the feed tab is the one on screen (see switchTab) — polling the
+// Sheet in the background on every other tab would just burn Apps Script quota for no reason.
+// Paused while the browser tab itself is hidden/backgrounded too (no point polling a screen
+// nobody's looking at), and catches up immediately the moment it becomes visible again.
+let feedAutoRefreshTimer = null;
+function startFeedAutoRefresh(){
+  stopFeedAutoRefresh();
+  if(!sheetWebAppUrl) return;
+  feedAutoRefreshTimer = setInterval(()=>{ if(!document.hidden) loadStopsFromSheet(); }, 20000);
+}
+function stopFeedAutoRefresh(){
+  if(feedAutoRefreshTimer){ clearInterval(feedAutoRefreshTimer); feedAutoRefreshTimer = null; }
+}
+document.addEventListener('visibilitychange', ()=>{
+  const feedTabEl = document.getElementById('tab-feed');
+  if(!document.hidden && feedTabEl && feedTabEl.style.display !== 'none' && sheetWebAppUrl){
+    loadStopsFromSheet();
+  }
+});
+
 /* ---------- ACCOUNTING VIEW ---------- */
+// Stop IDs with an accounting write (bill count / payment tick) currently in flight to the
+// Sheet — used to disable that row's controls so a second tap can't race the first and to
+// avoid re-entering the same write while it's still pending.
+let acctSyncingIds = new Set();
 function renderAccounting(){
   const personFilter = document.getElementById('acctPersonFilter').value;
   const statusFilter = document.getElementById('acctStatusFilter').value;
@@ -2880,23 +3150,29 @@ function renderAccounting(){
   document.getElementById('acctTable').innerHTML = list.map(s=>{
     const returned = Math.min(s.billReturnedQty||0, s.billQty);
     const complete = s.billQty>0 && returned >= s.billQty;
+    const syncing = acctSyncingIds.has(s.id);
+    const syncingTag = syncing ? ' <span class="mono" style="color:var(--slate);">⏳</span>' : '';
 
     let paymentCell = '-';
     if(s.category==='ลูกค้า' && s.paymentType==='เงินสด'){
       paymentCell = `
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-          <input type="checkbox" ${s.paymentCollected?'checked':''} onchange="toggleAccountingPaymentCollected(${s.id})">
-          <span>💵 ฿${formatMoney(s.paymentAmount)} ${s.paymentCollected?'<span class="statusPill back">ได้รับแล้ว</span>':'<span class="statusPill wait">ยังไม่ได้รับ</span>'}</span>
+          <input type="checkbox" ${s.paymentCollected?'checked':''} ${syncing?'disabled':''} onchange="toggleAccountingPaymentCollected(${s.id})">
+          <span>💵 ฿${formatMoney(s.paymentAmount)} ${s.paymentCollected?'<span class="statusPill back">ได้รับแล้ว</span>':'<span class="statusPill wait">ยังไม่ได้รับ</span>'}${syncingTag}</span>
         </label>`;
     } else if(s.category==='ลูกค้า' && s.paymentType==='โอน'){
-      paymentCell = `🏦 ฿${formatMoney(s.paymentAmount)} ${s.paymentSlipPhoto?'<span class="statusPill back">ได้สลิปแล้ว</span>':'<span class="statusPill wait">รอสลิป</span>'}`;
+      paymentCell = `
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" ${s.paymentCollected?'checked':''} ${syncing?'disabled':''} onchange="toggleAccountingPaymentCollected(${s.id})">
+          <span>🏦 ฿${formatMoney(s.paymentAmount)} ${s.paymentCollected?'<span class="statusPill back">โอนแล้ว</span>':'<span class="statusPill wait">ยังไม่โอน</span>'}${syncingTag}</span>
+        </label>`;
     } else if(s.category==='ลูกค้า' && s.paymentType==='สิ้นเดือน'){
       paymentCell = `🗓️ รวมจ่ายสิ้นเดือน`;
     } else if(s.category==='ซัพพลายเออร์' && s.supplierPaymentStatus==='ต้องจ่ายเงินสด'){
       paymentCell = `
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-          <input type="checkbox" ${s.supplierPaymentDone?'checked':''} onchange="toggleAccountingSupplierPaymentDone(${s.id})">
-          <span>💵 จ่ายซัพ ฿${formatMoney(s.supplierPaymentAmount)} ${s.supplierPaymentDone?'<span class="statusPill back">จ่ายแล้ว</span>':'<span class="statusPill wait">ยังไม่จ่าย</span>'}</span>
+          <input type="checkbox" ${s.supplierPaymentDone?'checked':''} ${syncing?'disabled':''} onchange="toggleAccountingSupplierPaymentDone(${s.id})">
+          <span>💵 จ่ายซัพ ฿${formatMoney(s.supplierPaymentAmount)} ${s.supplierPaymentDone?'<span class="statusPill back">จ่ายแล้ว</span>':'<span class="statusPill wait">ยังไม่จ่าย</span>'}${syncingTag}</span>
         </label>`;
     } else if(s.category==='ซัพพลายเออร์' && s.supplierPaymentStatus==='จ่ายแล้ว'){
       paymentCell = `<span class="statusPill back">จ่ายซัพแล้ว</span>`;
@@ -2904,9 +3180,9 @@ function renderAccounting(){
 
     const billCell = s.billQty>0 ? `
         <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn small ghost" onclick="adjustBillReturn(${s.id},-1)">−</button>
+          <button class="btn small ghost" ${syncing?'disabled':''} onclick="adjustBillReturn(${s.id},-1)">−</button>
           <span class="mono">${returned}/${s.billQty}</span>
-          <button class="btn small ghost" onclick="adjustBillReturn(${s.id},1)">+</button>
+          <button class="btn small ghost" ${syncing?'disabled':''} onclick="adjustBillReturn(${s.id},1)">+</button>${syncingTag}
         </div>` : '-';
     const statusCell = s.billQty>0 ? `<span class="statusPill ${complete?'back':'wait'}">${complete?'ครบแล้ว':'รออีก '+(s.billQty-returned)+' ใบ'}</span>` : '-';
 
@@ -2924,32 +3200,73 @@ function renderAccounting(){
     </tr>
   `;}).join("") || `<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:30px;">ไม่มีรายการ</td></tr>`;
 }
-function toggleAccountingPaymentCollected(id){
+async function toggleAccountingPaymentCollected(id){
   const s = stops.find(x=>x.id===id);
-  if(!s) return;
+  if(!s || acctSyncingIds.has(id)) return; // a write for this row is already in flight — ignore the extra tap
+  const prevCollected = s.paymentCollected, prevDeferred = s.paymentDeferred;
   s.paymentCollected = !s.paymentCollected;
   s.paymentDeferred = false;
-  syncToSheet('updateStop', { id: s.id, fields: { PaymentCollectedFlag: s.paymentCollected ? 'YES' : 'NO' } });
+  acctSyncingIds.add(id);
+  renderAccounting();
+
+  const result = await syncToSheetVerified('updateStop', { id: s.id, fields: { PaymentCollectedFlag: s.paymentCollected ? 'YES' : 'NO' } });
+  acctSyncingIds.delete(id);
+
+  if(!result.ok){
+    // Sheets never got this write — revert, or the tick would just flip back on the next
+    // reload (or on another device) with no explanation of why.
+    s.paymentCollected = prevCollected;
+    s.paymentDeferred = prevDeferred;
+    renderAccounting();
+    alert("❌ บันทึกสถานะการรับเงินไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")");
+    return;
+  }
   renderAccounting();
   renderMessenger();
   renderSearch();
 }
-function toggleAccountingSupplierPaymentDone(id){
+async function toggleAccountingSupplierPaymentDone(id){
   const s = stops.find(x=>x.id===id);
-  if(!s) return;
+  if(!s || acctSyncingIds.has(id)) return;
+  const prevDone = s.supplierPaymentDone, prevDeferred = s.supplierPaymentDeferred;
   s.supplierPaymentDone = !s.supplierPaymentDone;
   s.supplierPaymentDeferred = false;
-  syncToSheet('updateStop', { id: s.id, fields: { SupplierPaymentDoneFlag: s.supplierPaymentDone ? 'YES' : 'NO' } });
+  acctSyncingIds.add(id);
+  renderAccounting();
+
+  const result = await syncToSheetVerified('updateStop', { id: s.id, fields: { SupplierPaymentDoneFlag: s.supplierPaymentDone ? 'YES' : 'NO' } });
+  acctSyncingIds.delete(id);
+
+  if(!result.ok){
+    s.supplierPaymentDone = prevDone;
+    s.supplierPaymentDeferred = prevDeferred;
+    renderAccounting();
+    alert("❌ บันทึกสถานะการจ่ายเงินไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")");
+    return;
+  }
   renderAccounting();
   renderMessenger();
   renderSearch();
 }
-function adjustBillReturn(id, delta){
+async function adjustBillReturn(id, delta){
   const s = stops.find(x=>x.id===id);
-  if(!s) return;
-  const next = Math.max(0, Math.min(s.billQty, (s.billReturnedQty||0) + delta));
+  if(!s || acctSyncingIds.has(id)) return; // a write for this row is already in flight — ignore extra +/- taps until it settles
+  const prev = s.billReturnedQty || 0;
+  const next = Math.max(0, Math.min(s.billQty, prev + delta));
+  if(next === prev) return;
   s.billReturnedQty = next;
-  syncToSheet('billStatus', { id: s.id, billRef: s.billRef, billQty: s.billQty, billReturnedQty: next });
+  acctSyncingIds.add(id);
+  renderAccounting();
+
+  const result = await syncToSheetVerified('billStatus', { id: s.id, billRef: s.billRef, billQty: s.billQty, billReturnedQty: next });
+  acctSyncingIds.delete(id);
+
+  if(!result.ok){
+    s.billReturnedQty = prev; // Sheets never got this write — don't leave a count on screen that would just revert later
+    renderAccounting();
+    alert("❌ บันทึกจำนวนบิลกลับไม่สำเร็จ กรุณาลองอีกครั้ง (" + result.error + ")");
+    return;
+  }
   renderAccounting();
 }
 
@@ -3127,11 +3444,7 @@ function renderSearch(){
           <span class="badge issue-${s.issueSeverity==='มาก'?'high':s.issueSeverity==='กลาง'?'med':'low'}">⚠ ปัญหา${s.issueSeverity}</span>
           ${s.issueRecurring?`<span class="badge issue-recur">↻ เกิดซ้ำ</span>`:``}
         </div>` : ''}
-        ${s.status==='done'?`<div class="checkinfo">✓ ${s.checkinTime}</div>`:``}
-        ${s.status==='done' && s.photo?`<img class="checkinThumb" src="${s.photo}" onclick="openPhotoViewer(${s.id})" title="ดูรูปเช็คอิน">`:``}
-        ${s.status==='done' && s.paymentSlipPhoto?`<img class="checkinThumb" src="${s.paymentSlipPhoto}" onclick="openSlipViewer(${s.id})" title="ดูสลิปโอนเงิน" style="border-color:var(--teal);">`:``}
-          ${s.status==='done' && s.paymentEvidencePhoto?`<img class="checkinThumb" src="${s.paymentEvidencePhoto}" onclick="openCashEvidenceViewer(${s.id})" title="ดูรูปหลักฐานเงินสด" style="border-color:var(--teal);">`:``}
-          ${s.status==='done' && s.supplierPaymentEvidencePhoto?`<img class="checkinThumb" src="${s.supplierPaymentEvidencePhoto}" onclick="openSupplierEvidenceViewer(${s.id})" title="ดูรูปหลักฐานจ่ายซัพ" style="border-color:var(--teal);">`:``}
+        ${s.status==='done'?`<div class="checkinfo">✓ เช็คอิน ${s.checkinTime} น.${s.lat?' · 📍 บันทึกตำแหน่งแล้ว':''}</div>`:``}
       </div>
       <div class="actions">
         <a class="btn small ghost" style="text-decoration:none;text-align:center;" href="${mapUrl}" target="_blank" rel="noopener">🧭 นำทาง</a>
@@ -3263,6 +3576,7 @@ function escapeHtml(str){
 
 renderMessenger();
 renderSales();
+renderFeed();
 renderAccounting();
 renderAdmin();
 </script>

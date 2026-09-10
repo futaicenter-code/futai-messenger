@@ -122,6 +122,54 @@
   .dragHandle{
     color:var(--slate);font-size:18px;line-height:1;padding-top:2px;cursor:grab;user-select:none;
   }
+
+  /* Pool board (ส่วนกลาง) — left rail of messenger drop-targets + right area of province groups */
+  .poolBoard{display:flex;gap:16px;align-items:flex-start;}
+  .poolMessengerRail{
+    display:flex;flex-direction:column;gap:8px;flex:0 0 168px;position:sticky;top:12px;
+  }
+  .poolMsgTarget{
+    background:var(--card);border:2px dashed var(--line);border-radius:10px;padding:10px 12px;
+    transition:border-color .15s,background .15s;
+  }
+  .poolMsgTarget.drag-over{border-color:var(--amber-deep);background:var(--amber-soft);}
+  .poolMsgName{font-weight:700;font-size:13.5px;}
+  .poolMsgCount{font-size:11px;color:var(--slate);margin-top:3px;}
+
+  /* Province groups as real side-by-side kanban columns — one column per province, each
+     scrolling internally once it's tall, so the dispatcher scans across instead of down one
+     long page. Collapses to stacked full-width columns on phones (see the @media block). */
+  .poolProvinceArea{flex:1;min-width:0;display:flex;flex-direction:row;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:6px;}
+  .provinceGroup{
+    flex:0 0 232px;background:var(--card);border:1px solid var(--line);border-radius:12px;
+    overflow:hidden;display:flex;flex-direction:column;max-height:min(72vh,640px);
+  }
+  .provinceGroupHeader{
+    padding:9px 12px;font-weight:700;font-size:13px;flex-shrink:0;
+    display:flex;align-items:center;gap:6px;
+  }
+  .provinceGroupCount{
+    background:rgba(0,0,0,0.12);border-radius:20px;padding:1px 7px;font-size:11px;font-family:'IBM Plex Mono';
+  }
+  .provinceGroupBody{display:flex;flex-direction:column;gap:6px;padding:8px;overflow-y:auto;}
+
+  /* Compact card: checkbox + drag handle + name + delete only — same small footprint as the
+     messenger boxes in the rail. Full detail lives on the messenger's own tab (unchanged). */
+  .poolCard{
+    display:flex;gap:7px;align-items:center;background:#fff;border:1px solid var(--line);
+    border-radius:8px;padding:7px 9px;cursor:grab;
+  }
+  .poolCard.overdue{border-left:3px solid var(--red);padding-left:7px;}
+  .poolCardName{
+    flex:1;min-width:0;font-weight:600;font-size:13px;cursor:pointer;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .poolCardName:hover{text-decoration:underline;}
+  .poolCardDelete{
+    background:none;border:none;color:var(--slate);font-size:14px;line-height:1;cursor:pointer;
+    padding:3px 5px;border-radius:6px;flex-shrink:0;
+  }
+  .poolCardDelete:hover{background:var(--red-soft);color:var(--red);}
   .stopCard::before{
     content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--amber);
   }
@@ -326,6 +374,15 @@
     .stopCard .actions{flex-direction:row;width:100%;justify-content:flex-end;}
     .feedItem{flex-direction:column;}
     .feedTime{text-align:left;display:flex;gap:6px;align-items:baseline;}
+    .poolBoard{flex-direction:column;}
+    .poolMessengerRail{
+      flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static;width:100%;
+      -webkit-overflow-scrolling:touch;padding-bottom:4px;
+    }
+    .poolMsgTarget{flex:0 0 128px;}
+    .poolProvinceArea{flex-direction:column;overflow-x:visible;}
+    .provinceGroup{flex:1 1 auto;max-height:none;}
+    .provinceGroupBody{overflow-y:visible;}
   }
 </style>
 </head>
@@ -344,6 +401,7 @@
   </div>
   <nav class="tabs">
     <button class="active" data-tab="messenger" onclick="switchTab('messenger')">🏍️ แมส</button>
+    <button data-tab="pendingrange" onclick="switchTab('pendingrange')">🗓️ รอเลือกวันที่</button>
     <button data-tab="trucks" onclick="switchTab('trucks')">🚚 คิวรถกระบะ</button>
     <button data-tab="sales" onclick="switchTab('sales')">💼 เซลส์</button>
     <button data-tab="feed" onclick="switchTab('feed')">📋 ฟีด</button>
@@ -412,6 +470,34 @@
     </div>
 
     <div class="stopList" id="stopList"></div>
+  </div>
+
+  <!-- PENDING DATE-RANGE TAB — งานที่สร้างแบบ "เลือกวันที่ได้ในช่วง X-Y" (ส่วนใหญ่เป็นงานวางบิล) แยกออก
+       มาไว้ที่เดียวแทนที่จะแทรกอยู่บนหัวแท็บแมส/ส่วนกลาง เพื่อไม่ให้รกจนหางานอื่นยาก -->
+  <div id="tab-pendingrange" style="display:none;">
+    <div class="section">
+      <h2>🗓️ งานรอเลือกวันที่</h2>
+      <div class="fieldHint">งานที่สร้างแบบ "เลือกวันที่ได้ในช่วง X-Y" ยังไม่ถูกกำหนดวันที่แน่นอน — เลือกวันที่ที่สะดวก แล้วมอบหมายให้แมสได้เลยในการ์ดเดียวกัน หรือจะปล่อยไว้ในส่วนกลางให้แมสมาเลือกวันที่เองทีหลังก็ได้</div>
+    </div>
+    <div class="toolbar">
+      <div class="row">
+        <select id="rangeCategoryFilter" onchange="renderPendingRangeTab()">
+          <option value="all">ทุกประเภท</option>
+          <option value="ลูกค้า">เฉพาะลูกค้า</option>
+          <option value="ซัพพลายเออร์">เฉพาะซัพพลายเออร์</option>
+        </select>
+        <select id="rangeAssignFilter" onchange="renderPendingRangeTab()">
+          <option value="all">ทุกสถานะ</option>
+          <option value="unassigned">ยังไม่มอบหมาย</option>
+          <option value="assigned">มอบหมายแล้ว รอเลือกวันที่</option>
+        </select>
+      </div>
+      <div class="row">
+        <input class="input" id="rangeSearchQuery" placeholder="🔍 ค้นหาชื่อลูกค้า/ซัพพลายเออร์..." oninput="renderPendingRangeTab()" style="min-width:220px;">
+      </div>
+    </div>
+    <div class="summaryStrip" id="rangeSummary"></div>
+    <div class="stopList" id="pendingRangeList"></div>
   </div>
 
   <!-- SALES TAB -->
@@ -1174,13 +1260,14 @@ refreshSalesSelects();
 
 /* ---------- TABS ---------- */
 function switchTab(tab){
-  ['messenger','sales','feed','accounting','admin','search','trucks'].forEach(t=>{
+  ['messenger','pendingrange','sales','feed','accounting','admin','search','trucks'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = (t===tab)?'block':'none';
   });
   document.querySelectorAll('nav.tabs button').forEach(b=>{
     b.classList.toggle('active', b.dataset.tab===tab);
   });
   if(tab==='messenger') renderMessenger();
+  if(tab==='pendingrange') renderPendingRangeTab();
   if(tab==='sales') renderSales();
   if(tab==='feed') renderFeed();
   if(tab==='accounting') renderAccounting();
@@ -1242,44 +1329,26 @@ function renderMessenger(){
     </div>
   ` : '';
 
-  const pendingRangeList = stops.filter(s=>s.messenger===m && !s.date && s.dateRangeStart);
-  const pendingRangeSection = pendingRangeList.length===0 ? '' : `
-    <div class="section" style="background:var(--amber-soft);border:1px solid var(--amber);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
-      <h2 style="margin-bottom:4px;">🗓️ งานรอเลือกวันที่ (${pendingRangeList.length})</h2>
-      <div class="fieldHint" style="margin-bottom:10px;">${isPool ? 'มอบหมายให้แมสคนใดคนหนึ่งก่อน แล้วให้แมสเลือกวันที่สะดวกเองจากในช่วงที่กำหนด' : 'เลือกวันที่ที่สะดวกไปทำงานนี้ได้เลย ภายในช่วงที่กำหนดไว้ — พอเลือกแล้วจะเข้าไปอยู่ในรายการของวันนั้นตามปกติ'}</div>
-      <div class="stopList">
-        ${pendingRangeList.map(s=>renderPendingRangeCard(s, isPool, m)).join('')}
-      </div>
-    </div>
-  `;
+  // Date-range-pending stops (created as "pick any date between X-Y") now live entirely in their
+  // own "🗓️ รอเลือกวันที่" tab instead of being inlined here — they used to pile up at the top of
+  // whichever messenger/pool view you had open (dozens of them, mostly งานวางบิล) and made it hard
+  // to find the day's actual route/pool underneath. See renderPendingRangeTab().
 
-  if(list.length===0){
-    container.innerHTML = pendingRangeSection + poolCategoryBar + (isPool
-      ? `<div class="emptyState"><div class="disp">ส่วนกลางยังไม่มีจุดงาน${poolCategoryFilter!=='all'?' (ประเภท '+poolCategoryFilter+')':''}</div>กด "เพิ่มจุดงาน" เพื่อทยอยใส่สถานที่ทั้งหมดที่เซลส์แจ้งมา แล้วค่อยจัดเรียง/มอบหมายทีหลัง</div>`
-      : `<div class="emptyState"><div class="disp">ยังไม่มีจุดงานของ${m}วันนี้</div>กด "เพิ่มจุดงาน" เพื่อเริ่มวางแผนเส้นทาง หรือมอบหมายจากส่วนกลาง</div>`);
+  if(isPool){
+    // The pool ("ส่วนกลาง") gets its own board layout instead of one long scroll of full-detail
+    // cards — see renderPoolBoard() for the province-grouped, drag-to-assign redesign.
+    container.innerHTML = poolCategoryBar + renderPoolBoard(list, d);
     return;
   }
 
-  const bulkBar = (isPool && list.length>0) ? `
-    <div class="bulkBar">
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
-        <input type="checkbox" id="selectAllUnassigned" onchange="toggleSelectAll(this.checked)" ${list.every(s=>selectedForAssign.has(s.id))?'checked':''}>
-        เลือกทั้งหมด
-      </label>
-      <span class="fieldHint" style="margin:0;">เลือกแล้ว ${selectedForAssign.size} ที่</span>
-      <select id="bulkAssignSelect" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line);">
-        <option value="">มอบหมายที่เลือกให้...</option>
-        ${MESSENGERS.map(name=>`<option value="${name}">${name}</option>`).join('')}
-      </select>
-      <button class="btn small primary" onclick="bulkAssign()">มอบหมาย</button>
-    </div>
-  ` : '';
+  if(list.length===0){
+    container.innerHTML = `<div class="emptyState"><div class="disp">ยังไม่มีจุดงานของ${m}วันนี้</div>กด "เพิ่มจุดงาน" เพื่อเริ่มวางแผนเส้นทาง หรือมอบหมายจากส่วนกลาง</div>`;
+    return;
+  }
 
-  const hint = isPool
-    ? `<div class="fieldHint" style="margin-bottom:2px;">ลากไอคอน ⠿ เพื่อจัดลำดับตามความใกล้ก่อน แล้วติ๊กเลือก → มอบหมายให้แมสแต่ละคนด้านบน</div>`
-    : (list.length>1 ? `<div class="fieldHint" style="margin-bottom:2px;">ลากไอคอน ⠿ เพื่อสลับลำดับเส้นทางเอง — เรียงจุดที่ใกล้ที่สุดไว้ก่อน</div>` : '');
+  const hint = list.length>1 ? `<div class="fieldHint" style="margin-bottom:2px;">ลากไอคอน ⠿ เพื่อสลับลำดับเส้นทางเอง — เรียงจุดที่ใกล้ที่สุดไว้ก่อน</div>` : '';
 
-  container.innerHTML = pendingRangeSection + poolCategoryBar + bulkBar + hint + list.map((s,i)=>{
+  container.innerHTML = hint + list.map((s,i)=>{
     const mapUrl = isMapLink(s.addr) ? s.addr : ("https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(s.addr));
     return `
     <div class="stopCard ${s.status==='done'?'done':''}" draggable="true"
@@ -1292,6 +1361,7 @@ function renderMessenger(){
           <div class="name">${escapeHtml(s.name)}</div>
           <div class="addr">${isMapLink(s.addr) ? '🔗 ลิงก์ Google Maps' : escapeHtml(s.addr)}</div>
           ${provinceBadge(s.addr, s.province) ? `<div class="metaBlock" style="margin-top:5px;">${provinceBadge(s.addr, s.province)}</div>` : ''}
+          ${duplicateBadge(s) ? `<div class="metaBlock" style="margin-top:5px;">${duplicateBadge(s)}</div>` : ''}
           <div class="metaBlock">
             <span class="badge category-${s.category==='ซัพพลายเออร์'?'supplier':'customer'}">${s.category||'ลูกค้า'}</span>
             ${purposeBadge(s)}
@@ -1362,6 +1432,39 @@ function toggleSelectAll(checked){
   else ids.forEach(id=>selectedForAssign.delete(id));
   renderMessenger();
 }
+/* Same-customer-same-day duplicate detection — admin (regular add-stop, e.g. ส่งสินค้า) and
+   accounting (วางบิล/รับเช็ค via the flexible date-range flow) often add separate stops for the
+   same customer that land on the same day, which the messenger then just sees as two unrelated
+   cards. Deliberately NOT auto-merged into one stop: billQty/billRef/billReturnedQty are
+   single-value-per-stop fields the accounting tab reconciles against (see adjustBillReturn), so
+   folding two different bill references into one stop's fields would make them impossible to
+   track separately. Instead: warn whoever is creating/dating the second stop — they can cancel
+   and go add it as a taskItem on the existing stop instead if it's genuinely the same visit — and
+   tag both cards on the messenger's day list so it's obvious they belong together either way. */
+function findSameDayStops(name, date, excludeId){
+  const norm = (name||'').trim().toLowerCase();
+  if(!norm || !date) return [];
+  return stops.filter(s=> s.id!==excludeId && s.date===date && (s.name||'').trim().toLowerCase()===norm);
+}
+function checkDuplicateSameDay(name, date, excludeId){
+  const dupes = findSameDayStops(name, date, excludeId);
+  if(dupes.length===0) return true;
+  const lines = dupes.map(s=>{
+    const who = s.messenger===UNASSIGNED ? 'ยังไม่มอบหมาย' : s.messenger;
+    return `- ${s.purpose || s.category || 'งาน'} (${who}${s.status==='done'?' · เช็คอินแล้ว':''})`;
+  }).join('\n');
+  return confirm(`⚠️ "${name}" มีงานอยู่แล้ววันที่ ${date}:\n${lines}\n\nจะสร้างเป็นอีกจุดแยกต่างหากใช่ไหม? (แมสจะเห็นเป็น 2 การ์ดที่เดียวกัน)\n\nถ้าจริงๆ แล้วเป็นงานเดียวกัน กด "ยกเลิก" แล้วไปเปิดจุดงานเดิม → "✏️ แก้ไข" → เพิ่มสิ่งที่นำไปแทนจะดีกว่า`);
+}
+function duplicateBadge(s){
+  const dupes = findSameDayStops(s.name, s.date, s.id);
+  if(dupes.length===0) return '';
+  const first = dupes[0];
+  const firstWho = first.messenger===UNASSIGNED ? 'ยังไม่มอบหมาย' : first.messenger;
+  const label = dupes.length===1
+    ? `🔗 มีอีกงานที่นี่วันนี้: ${escapeHtml(first.purpose||first.category||'งาน')} (${escapeHtml(firstWho)})`
+    : `🔗 มีอีก ${dupes.length} งานที่นี่วันนี้`;
+  return `<span class="badge" style="background:var(--amber-soft);color:var(--amber-deep);" title="ลูกค้าเดียวกัน วันเดียวกัน — เช็คว่าเป็นงานเดียวกันไหมก่อนให้แมสไปสองรอบ">${label}</span>`;
+}
 function assignStopTo(id, messengerName){
   const s = stops.find(x=>x.id===id);
   if(!s) return;
@@ -1370,12 +1473,15 @@ function assignStopTo(id, messengerName){
   s.sortIndex = maxSort + 10;
   syncToSheet('assignStop', { id: s.id, messenger: messengerName });
 }
-function renderPendingRangeCard(s, isPool, m){
+function renderPendingRangeCard(s){
   const rangeLabel = `${s.dateRangeStart} ถึง ${s.dateRangeEnd}`;
   const messengerOptions = `
     <option value="${UNASSIGNED}" ${s.messenger===UNASSIGNED?'selected':''}>📥 ยังไม่มอบหมาย (ส่วนกลาง)</option>
     ${MESSENGERS.map(name=>`<option value="${name}" ${s.messenger===name?'selected':''}>${name}</option>`).join('')}
   `;
+  const assignStatusBadge = s.messenger===UNASSIGNED
+    ? `<span class="badge" style="background:var(--red-soft);color:var(--red);">📥 ยังไม่มอบหมาย</span>`
+    : `<span class="badge" style="background:var(--teal-soft);color:var(--teal);">👤 มอบหมายแล้ว: ${escapeHtml(s.messenger)}</span>`;
   return `
     <div class="stopCard">
       <div>
@@ -1385,6 +1491,7 @@ function renderPendingRangeCard(s, isPool, m){
         <div class="metaBlock">
           <span class="badge category-${s.category==='ซัพพลายเออร์'?'supplier':'customer'}">${s.category||'ลูกค้า'}</span>
           ${purposeBadge(s)}
+          ${assignStatusBadge}
         </div>
         <div class="metaBlock" style="margin-top:8px;">
           <input type="date" id="rangePick_${s.id}" min="${s.dateRangeStart}" max="${s.dateRangeEnd}" value="${s.date || s.dateRangeStart}" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;">
@@ -1399,6 +1506,32 @@ function renderPendingRangeCard(s, isPool, m){
       </div>
     </div>`;
 }
+
+/* Dedicated tab for every date-range-pending stop system-wide (not scoped to whichever messenger
+   happens to be selected elsewhere) — see the note above renderMessenger() for why this moved out. */
+function renderPendingRangeTab(){
+  const categoryFilter = document.getElementById('rangeCategoryFilter').value;
+  const assignFilter = document.getElementById('rangeAssignFilter').value;
+  const searchQuery = (document.getElementById('rangeSearchQuery').value||'').trim().toLowerCase();
+
+  const allPending = stops.filter(s=>!s.date && s.dateRangeStart);
+  let list = allPending;
+  if(categoryFilter!=='all') list = list.filter(s=>s.category===categoryFilter);
+  if(assignFilter==='unassigned') list = list.filter(s=>s.messenger===UNASSIGNED);
+  if(assignFilter==='assigned') list = list.filter(s=>s.messenger!==UNASSIGNED);
+  if(searchQuery) list = list.filter(s=>(s.name||'').toLowerCase().includes(searchQuery));
+  list = list.sort((a,b)=> a.dateRangeStart<b.dateRangeStart ? -1 : (a.dateRangeStart>b.dateRangeStart ? 1 : 0));
+
+  const unassignedCount = allPending.filter(s=>s.messenger===UNASSIGNED).length;
+  document.getElementById('rangeSummary').innerHTML = `
+    <div class="kpi"><div class="num">${allPending.length}</div><div class="lbl">รอเลือกวันที่ทั้งหมด</div></div>
+    <div class="kpi"><div class="num" style="color:var(--red)">${unassignedCount}</div><div class="lbl">ยังไม่มอบหมาย</div></div>
+    <div class="kpi"><div class="num">${list.length}</div><div class="lbl">ตรงกับตัวกรองนี้</div></div>
+  `;
+
+  document.getElementById('pendingRangeList').innerHTML = list.map(s=>renderPendingRangeCard(s)).join('')
+    || `<div class="emptyState"><div class="disp">${allPending.length===0 ? 'ไม่มีงานรอเลือกวันที่' : 'ไม่มีงานที่ตรงกับตัวกรองนี้'}</div>${allPending.length===0 ? 'งานที่สร้างแบบเลือกช่วงวันที่ (เช่น "เลือกได้ระหว่างวันที่ X-Y") จะมาโผล่ที่นี่' : 'ลองล้าง/เปลี่ยนตัวกรองดู'}</div>`;
+}
 function confirmRangeStop(id){
   const s = stops.find(x=>x.id===id);
   if(!s) return;
@@ -1408,12 +1541,14 @@ function confirmRangeStop(id){
   const chosenMessenger = assignSelect ? assignSelect.value : UNASSIGNED;
   if(!chosenDate){ alert("กรุณาเลือกวันที่"); return; }
   if(chosenDate < s.dateRangeStart || chosenDate > s.dateRangeEnd){ alert(`เลือกได้เฉพาะวันที่ ${s.dateRangeStart} ถึง ${s.dateRangeEnd} เท่านั้น`); return; }
+  if(!checkDuplicateSameDay(s.name, chosenDate, s.id)) return;
   s.date = chosenDate;
   s.messenger = chosenMessenger;
   s.sortIndex = generateStopId();
   syncToSheet('updateStop', { id: s.id, fields: { Date: chosenDate, SortIndex: s.sortIndex } });
   syncToSheet('assignStop', { id: s.id, messenger: chosenMessenger });
   renderMessenger();
+  renderPendingRangeTab();
 }
 function quickAssign(id, messengerName){
   assignStopTo(id, messengerName);
@@ -1428,6 +1563,113 @@ function bulkAssign(){
   Array.from(selectedForAssign).forEach(id=>assignStopTo(id, messengerName));
   selectedForAssign.clear();
   renderMessenger();
+}
+
+/* ---------- POOL BOARD (ส่วนกลาง) ----------
+   Redesigned per request: instead of one long scroll of full-detail cards, split into two panes —
+   a left rail of messenger names (drop targets, with today's workload so it's obvious who's
+   already loaded up) and a right area grouping the pool's jobs by province, so a dispatcher can
+   spot clusters of nearby work and drag a card straight onto whoever should take it. Checkbox
+   multi-select + the existing bulk-assign dropdown stay available too, since HTML5 drag-and-drop
+   doesn't work on touchscreens and this app runs on phones in the field. */
+function renderPoolBoard(list, d){
+  const bulkBar = list.length>0 ? `
+    <div class="bulkBar">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="selectAllUnassigned" onchange="toggleSelectAll(this.checked)" ${list.every(s=>selectedForAssign.has(s.id))?'checked':''}>
+        เลือกทั้งหมด
+      </label>
+      <span class="fieldHint" style="margin:0;">เลือกแล้ว ${selectedForAssign.size} ที่</span>
+      <select id="bulkAssignSelect" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line);">
+        <option value="">มอบหมายที่เลือกให้...</option>
+        ${MESSENGERS.map(name=>`<option value="${name}">${name}</option>`).join('')}
+      </select>
+      <button class="btn small primary" onclick="bulkAssign()">มอบหมาย</button>
+    </div>
+  ` : '';
+
+  const hint = `<div class="fieldHint" style="margin:10px 0;">ลากชื่อลูกค้า/ซัพพลายเออร์ไปวางบนชื่อแมสด้านซ้ายเพื่อมอบหมายทันที (มือถือ: ติ๊กเลือก แล้วมอบหมายจากแถบด้านบนแทน) — แต่ละคอลัมคือ 1 จังหวัด กดชื่อเพื่อดู/แก้รายละเอียดเต็ม</div>`;
+
+  const rail = `
+    <div class="poolMessengerRail">
+      ${MESSENGERS.map(name=>{
+        const mine = stops.filter(s=>s.messenger===name && s.date===d);
+        const doneCount = mine.filter(s=>s.status==='done').length;
+        return `
+        <div class="poolMsgTarget" data-messenger="${escapeHtml(name)}"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handlePoolAssignDrop(event, this.dataset.messenger)">
+          <div class="poolMsgName">${escapeHtml(name)}</div>
+          <div class="poolMsgCount">${mine.length} งานวันนี้${mine.length>0?` · เสร็จ ${doneCount}`:''}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  if(list.length===0){
+    return hint + `<div class="poolBoard">${rail}<div class="poolProvinceArea"><div class="emptyState"><div class="disp">ส่วนกลางยังไม่มีจุดงาน${poolCategoryFilter!=='all'?' (ประเภท '+poolCategoryFilter+')':''}</div>กด "เพิ่มจุดงาน" เพื่อทยอยใส่สถานที่ทั้งหมดที่เซลส์แจ้งมา แล้วค่อยจัดเรียง/มอบหมายทีหลัง</div></div></div>`;
+  }
+
+  // Group by province so nearby jobs cluster together — same detection/coloring already used for
+  // the per-stop province badge elsewhere in the app, just applied at the group level here.
+  const groups = {};
+  list.forEach(s=>{
+    const prov = s.province || detectProvince(s.addr) || 'ไม่ระบุจังหวัด';
+    (groups[prov] = groups[prov] || []).push(s);
+  });
+  const provinceNames = Object.keys(groups).sort((a,b)=> groups[b].length - groups[a].length || a.localeCompare(b,'th'));
+
+  // Real side-by-side columns (like a kanban board) — one column per province, each scrolling
+  // internally once it gets tall, so the dispatcher scans across provinces instead of down one
+  // long page. See the @media block for how this collapses to stacked full-width columns on phones.
+  const board = `
+    <div class="poolBoard">
+      ${rail}
+      <div class="poolProvinceArea">
+        ${provinceNames.map(prov=>{
+          const c = provinceColor(prov);
+          const items = groups[prov];
+          return `
+          <div class="provinceGroup">
+            <div class="provinceGroupHeader" style="background:${c.bg};color:${c.fg};">
+              📍 ${escapeHtml(prov)} <span class="provinceGroupCount">${items.length}</span>
+            </div>
+            <div class="provinceGroupBody">
+              ${items.map(s=>renderPoolCompactCard(s)).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+
+  return bulkBar + hint + board;
+}
+
+// Deliberately bare-bones: just a checkbox (for the mobile bulk-assign fallback), a drag handle,
+// the name (click it to open the full edit modal), and a ✕ to remove it — same small footprint as
+// the messenger boxes in the rail. Every other detail (address, category, purpose, bill count,
+// nav link) stays on the full card, which is what you see once a stop lands on a specific
+// messenger's own tab.
+function renderPoolCompactCard(s){
+  const overdue = s.date && s.date!==todayStr;
+  return `
+    <div class="poolCard${overdue?' overdue':''}" draggable="true" ondragstart="handleDragStart(event, ${s.id})" title="${overdue?'⏰ ค้างจากวันที่ '+s.date+' — ':''}${escapeHtml(s.name)}">
+      <input type="checkbox" style="cursor:pointer;flex-shrink:0;" ${selectedForAssign.has(s.id)?'checked':''} onchange="toggleStopSelect(${s.id}, this.checked)">
+      <div class="dragHandle" title="ลากไปวางที่ชื่อแมส">⠿</div>
+      <span class="poolCardName" onclick="openEditStopModal(${s.id})">${escapeHtml(s.name)}</span>
+      <button class="poolCardDelete" onclick="deleteStop(${s.id})" title="ลบจุดนี้">✕</button>
+    </div>`;
+}
+
+function handlePoolAssignDrop(ev, messengerName){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('drag-over');
+  const sourceId = dragSourceId;
+  dragSourceId = null;
+  if(sourceId==null || !messengerName) return;
+  quickAssign(sourceId, messengerName);
 }
 
 function isMapLink(addr){
@@ -1527,6 +1769,7 @@ function deleteStop(id){
   stops = stops.filter(x=>x.id!==id);
   syncToSheet('deleteStop', { id });
   renderMessenger();
+  renderPendingRangeTab();
   renderAccounting();
   renderAdmin();
 }
@@ -1961,6 +2204,7 @@ function submitAddStop(){
   } else {
     date = document.getElementById('f_deliveryDate').value;
     if(!date){ alert("กรุณาเลือกวันที่ต้องการให้ไปส่ง/รับ"); return; }
+    if(!checkDuplicateSameDay(name, date, null)) return;
   }
 
   const paymentType = category==='ลูกค้า' ? document.querySelector('#f_paymentTypeGroup input[name=f_paymentType]:checked').value : '';
@@ -2207,7 +2451,7 @@ async function loadBootstrapData(){
       dataLoadedFromSheet = true;
       statusEl.textContent = `เชื่อมต่อแล้ว — โหลดข้อมูลจาก Google Sheet สำเร็จ (${stops.length} งาน)`;
       statusEl.className = "status ok";
-      renderMessenger(); renderSales(); renderFeed(); renderAccounting(); renderAdmin();
+      renderMessenger(); renderPendingRangeTab(); renderSales(); renderFeed(); renderAccounting(); renderAdmin();
       updateDemoDataBanner();
       return; // success — no need to retry further
     }catch(e){
@@ -2279,7 +2523,7 @@ async function loadStopsFromSheet(){
       updateDemoDataBanner();
       statusEl.textContent = `เชื่อมต่อแล้ว — โหลดงานจาก Google Sheet แล้ว ${stops.length} งาน`;
       statusEl.className = "status ok";
-      renderMessenger(); renderSales(); renderFeed(); renderAccounting(); renderAdmin();
+      renderMessenger(); renderPendingRangeTab(); renderSales(); renderFeed(); renderAccounting(); renderAdmin();
     } else {
       // The server responded successfully but didn't send back the expected array —
       // show exactly what it sent instead of silently leaving old status text on screen.
@@ -3575,6 +3819,7 @@ function escapeHtml(str){
 })();
 
 renderMessenger();
+renderPendingRangeTab();
 renderSales();
 renderFeed();
 renderAccounting();

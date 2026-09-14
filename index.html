@@ -119,6 +119,13 @@
      spacer reserves the room for it in normal flow so the last cards aren't hidden underneath.
      Its height is set from JS (see renderMessenger's isPool branch) to match the bar's real height. */
   .poolBottomBarSpacer{display:none;}
+
+  /* Same "pin it to the bottom of the screen on mobile" treatment for the messenger tab's search
+     bar — it sits above a long, often-scrolled card list too, and search is exactly the kind of
+     thing you want in thumb's reach without scrolling back up. Desktop is untouched (still a
+     normal row above the list). */
+  .msgSearchBar{margin-bottom:12px;}
+  .msgSearchBarSpacer{display:none;}
   .stopCard{
     background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
     display:flex;justify-content:space-between;gap:12px;align-items:flex-start;
@@ -129,6 +136,28 @@
   .dragHandle{
     color:var(--slate);font-size:18px;line-height:1;padding-top:2px;cursor:grab;user-select:none;
   }
+
+  /* Route-reorder controls on the messenger's own day list — a bigger, chip-styled drag handle
+     (the old bare ⠿ icon was a ~18px tap target, hard to grab precisely on a phone) plus explicit
+     ▲▼ move buttons. The buttons matter more than the bigger handle: native HTML5 drag-and-drop
+     is unreliable on touchscreens (Safari on iOS never fires it from a touch gesture at all, and
+     Android Chrome's support is inconsistent), so dragging can't be the only way to reorder on
+     mobile. Kept separate from .dragHandle/.poolCard so the pool board's intentionally-tiny
+     compact cards (see renderPoolCompactCard) aren't affected. */
+  .reorderControls{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;}
+  .routeDragHandle{
+    color:var(--slate);font-size:20px;line-height:1;cursor:grab;user-select:none;
+    width:38px;height:38px;border-radius:8px;background:var(--paper);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .routeDragHandle:active{cursor:grabbing;background:var(--amber-soft);border-color:var(--amber);}
+  .reorderBtn{
+    width:38px;height:26px;padding:0;border-radius:6px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);font-size:12px;line-height:1;cursor:pointer;
+  }
+  .reorderBtn:disabled{opacity:0.3;cursor:not-allowed;}
+  .reorderBtn:not(:disabled):hover{background:var(--ink);color:#fff;}
+  .reorderBtn:not(:disabled):active{background:var(--amber-deep);color:#fff;border-color:var(--amber-deep);}
 
   /* Pool board (ส่วนกลาง) — left rail of messenger drop-targets + right area of province groups */
   .poolBoard{display:flex;gap:16px;align-items:flex-start;}
@@ -404,6 +433,21 @@
     .bulkBarRow1{justify-content:space-between;}
     .bulkBarRow2 select{flex:1;min-width:0;}
     .poolBottomBarSpacer{display:block;}
+
+    /* Same fixed-bottom treatment for the messenger tab's search bar — see the .bulkBar rules
+       above for why (in-reach controls without scrolling back to the top of a long card list). */
+    .msgSearchBar{
+      position:fixed;left:0;right:0;bottom:0;z-index:22;margin:0;
+      background:var(--card);box-shadow:0 -4px 14px rgba(27,36,48,0.14);
+      padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)) 14px;
+    }
+    .msgSearchBar #msgSearchQuery{min-width:0;}
+    .msgSearchBarSpacer{display:block;}
+
+    /* Route-reorder controls: the ▲▼ buttons are the guaranteed-to-work method on mobile since
+       drag-and-drop is unreliable on touchscreens (see the .reorderControls comment) — give them
+       a touch-friendly size here rather than relying on the desktop dimensions. */
+    .reorderBtn{width:34px;height:30px;font-size:14px;}
   }
 </style>
 </head>
@@ -485,12 +529,13 @@
 
     <div class="summaryStrip" id="msgSummary"></div>
 
-    <div class="row" style="margin-bottom:12px;">
+    <div class="row msgSearchBar" id="msgSearchBar">
       <input class="input" id="msgSearchQuery" placeholder="🔍 ค้นหาชื่อลูกค้า/ซัพพลายเออร์ในรายการนี้..." oninput="renderMessenger()" style="min-width:260px;flex:1;">
       <button class="btn ghost" onclick="document.getElementById('msgSearchQuery').value='';renderMessenger();">ล้างการค้นหา</button>
     </div>
 
     <div class="stopList" id="stopList"></div>
+    <div class="msgSearchBarSpacer" id="msgSearchBarSpacer"></div>
   </div>
 
   <!-- PENDING DATE-RANGE TAB — งานที่สร้างแบบ "เลือกวันที่ได้ในช่วง X-Y" (ส่วนใหญ่เป็นงานวางบิล) แยกออก
@@ -1326,6 +1371,7 @@ function renderMessenger(){
   const searchQuery = (document.getElementById('msgSearchQuery').value||'').trim().toLowerCase();
   if(searchQuery) list = list.filter(s=>(s.name||'').toLowerCase().includes(searchQuery));
   const container = document.getElementById('stopList');
+  sizeMsgSearchBarSpacer(); // the search bar above #stopList is present for both pool and individual views
   const done = list.filter(s=>s.status==='done').length;
   const totalBillQty = list.reduce((sum,s)=>sum+(s.billQty||0),0);
 
@@ -1368,16 +1414,30 @@ function renderMessenger(){
     return;
   }
 
-  const hint = list.length>1 ? `<div class="fieldHint" style="margin-bottom:2px;">ลากไอคอน ⠿ เพื่อสลับลำดับเส้นทางเอง — เรียงจุดที่ใกล้ที่สุดไว้ก่อน</div>` : '';
+  const hint = list.length>1 ? `<div class="fieldHint" style="margin-bottom:2px;">ลากไอคอน ⠿ หรือกด ▲▼ เพื่อสลับลำดับเส้นทางเอง — เรียงจุดที่ใกล้ที่สุดไว้ก่อน (บนมือถือ ▲▼ มักลื่นกว่าการลาก)</div>` : '';
+
+  // Same-date stops are the only ones with a meaningful position in the route order — an overdue
+  // stop carried forward from an earlier date (see the "list" filter above) sorts to the top for
+  // visibility but isn't part of today's sortIndex sequence, so it gets no ▲▼ (same as it already
+  // silently can't be dragged into that sequence via handleDrop).
+  const reorderList = list.filter(s=>s.date===d);
 
   container.innerHTML = hint + list.map((s,i)=>{
     const mapUrl = isMapLink(s.addr) ? s.addr : ("https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(s.addr));
+    const ridx = s.date===d ? reorderList.findIndex(x=>x.id===s.id) : -1;
+    const canReorder = ridx!==-1;
+    const isFirst = !canReorder || ridx===0;
+    const isLast = !canReorder || ridx===reorderList.length-1;
     return `
     <div class="stopCard ${s.status==='done'?'done':''}" draggable="true"
       ondragstart="handleDragStart(event, ${s.id})" ondragover="event.preventDefault()" ondrop="handleDrop(event, ${s.id})">
       <div style="display:flex;gap:10px;">
         ${isPool ? `<input type="checkbox" style="margin-top:4px;cursor:pointer;" ${selectedForAssign.has(s.id)?'checked':''} onchange="toggleStopSelect(${s.id}, this.checked)">` : ''}
-        <div class="dragHandle" title="ลากเพื่อสลับลำดับ">⠿</div>
+        <div class="reorderControls">
+          <div class="routeDragHandle" title="ลากเพื่อสลับลำดับ">⠿</div>
+          <button class="reorderBtn" type="button" title="เลื่อนขึ้น" ${isFirst?'disabled':''} onclick="moveStop(${s.id}, -1)">▲</button>
+          <button class="reorderBtn" type="button" title="เลื่อนลง" ${isLast?'disabled':''} onclick="moveStop(${s.id}, 1)">▼</button>
+        </div>
         <div>
           <div class="idx">จุดที่ ${i+1} จาก ${list.length}${s.date && s.date!==d ? ` · <span style="color:var(--red);font-weight:700;">⏰ ค้างจากวันที่ ${s.date}</span>` : ''}</div>
           <div class="name">${escapeHtml(s.name)}</div>
@@ -1594,18 +1654,20 @@ function bulkAssign(){
    spot clusters of nearby work and drag a card straight onto whoever should take it. Checkbox
    multi-select + the existing bulk-assign dropdown stay available too, since HTML5 drag-and-drop
    doesn't work on touchscreens and this app runs on phones in the field. */
-// On mobile the bulkBar is pinned to the bottom of the screen (position:fixed) so picking a
-// messenger to assign to never requires scrolling back up through the pool's card list. That
-// takes it out of normal document flow, so a spacer div reserves the same amount of room right
-// where the bar used to sit, sized from its real rendered height (it can wrap to more than one
-// line on very narrow phones) rather than a guessed constant.
-function sizePoolBottomBarSpacer(){
+// Shared by every bar that gets pinned to the bottom of the screen on mobile (position:fixed) —
+// that takes it out of normal document flow, so a spacer div has to reserve the same amount of
+// room right where the bar used to sit. Sized from the bar's real rendered height (it can wrap to
+// more than one line on very narrow phones) rather than a guessed constant.
+function sizeMobileStickyBar(barSelector, spacerSelector){
   requestAnimationFrame(()=>{
-    const bar = document.querySelector('.bulkBar');
-    const spacer = document.querySelector('.poolBottomBarSpacer');
+    const bar = document.querySelector(barSelector);
+    const spacer = document.querySelector(spacerSelector);
     if(bar && spacer) spacer.style.height = bar.offsetHeight + 'px';
   });
 }
+function sizePoolBottomBarSpacer(){ sizeMobileStickyBar('.bulkBar', '.poolBottomBarSpacer'); }
+function sizeMsgSearchBarSpacer(){ sizeMobileStickyBar('#msgSearchBar', '#msgSearchBarSpacer'); }
+window.addEventListener('resize', sizeMsgSearchBarSpacer);
 
 function renderPoolBoard(list, d){
   // Two explicit rows (rather than one flat flex-wrap row) so the mobile version — a fixed bar
@@ -1826,17 +1888,15 @@ function handleDragStart(ev, id){
   ev.dataTransfer.effectAllowed = 'move';
   try{ ev.dataTransfer.setData('text/plain', String(id)); }catch(e){}
 }
-async function handleDrop(ev, targetId){
-  ev.preventDefault();
-  const sourceId = dragSourceId;
-  dragSourceId = null;
-  if(sourceId==null || sourceId===targetId) return;
-  const m = currentMessenger();
-  const d = currentDate();
+// Shared by the mouse drag-to-reorder (handleDrop) and the ▲▼ move buttons (moveStop) — native
+// HTML5 drag-and-drop is unreliable on touchscreens (iOS Safari never fires it from a touch
+// gesture at all; Android Chrome's support is inconsistent), so the buttons are the version
+// that's guaranteed to work on every device. Only reorders within the same messenger+date — an
+// overdue stop carried forward from an earlier date (see renderMessenger) isn't part of this
+// day's sort order, so fromIdx/toIdx come back -1 for it and the reorder is silently skipped.
+async function reorderStops(m, d, fromIdx, toIdx){
   const list = stops.filter(s=>s.messenger===m && s.date===d).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0));
-  const fromIdx = list.findIndex(s=>s.id===sourceId);
-  const toIdx = list.findIndex(s=>s.id===targetId);
-  if(fromIdx===-1 || toIdx===-1) return;
+  if(fromIdx===-1 || toIdx===-1 || fromIdx===toIdx || toIdx<0 || toIdx>=list.length) return;
 
   // Remember the old order so it can be rolled back if the Sheet write fails — Sheets is the
   // source of truth, so a reorder that never actually saved must not stick on screen (this is
@@ -1846,7 +1906,7 @@ async function handleDrop(ev, targetId){
   const [moved] = list.splice(fromIdx,1);
   list.splice(toIdx,0,moved);
   list.forEach((s,i)=>{ s.sortIndex = i*10; });
-  renderMessenger(); // reflect the new order immediately so the drag still feels responsive
+  renderMessenger(); // reflect the new order immediately so it still feels responsive
 
   const results = await Promise.all(list.map(s =>
     syncToSheetVerified('updateStop', { id: s.id, fields: { SortIndex: s.sortIndex } })
@@ -1859,6 +1919,27 @@ async function handleDrop(ev, targetId){
     renderMessenger();
     alert("❌ บันทึกลำดับใหม่ไม่สำเร็จ กรุณาลองจัดลำดับใหม่อีกครั้ง");
   }
+}
+async function handleDrop(ev, targetId){
+  ev.preventDefault();
+  const sourceId = dragSourceId;
+  dragSourceId = null;
+  if(sourceId==null || sourceId===targetId) return;
+  const m = currentMessenger();
+  const d = currentDate();
+  const list = stops.filter(s=>s.messenger===m && s.date===d).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0));
+  const fromIdx = list.findIndex(s=>s.id===sourceId);
+  const toIdx = list.findIndex(s=>s.id===targetId);
+  await reorderStops(m, d, fromIdx, toIdx);
+}
+// ▲▼ buttons on each route card — direction is -1 (move up/earlier) or +1 (move down/later).
+function moveStop(id, direction){
+  const m = currentMessenger();
+  const d = currentDate();
+  const list = stops.filter(s=>s.messenger===m && s.date===d).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0));
+  const idx = list.findIndex(s=>s.id===id);
+  if(idx===-1) return;
+  reorderStops(m, d, idx, idx+direction);
 }
 
 function openRouteAll(){
